@@ -1,0 +1,1753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d12">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Unofficial Android BLE Remote & Screen Mirror for Bruce Firmware">
+  <title>BruceBLE</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+
+  <style>
+    :root {
+      --bg-main: #0b0d12;
+      --bg-panel: #131720;
+      --bg-elevated: #1c2230;
+      --accent: #a855f7;
+      --accent-glow: rgba(168, 85, 247, 0.35);
+      --accent-active: #c084fc;
+      --success: #22c55e;
+      --warning: #eab308;
+      --danger: #ef4444;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --border: #262f40;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: var(--danger);
+      box-shadow: 0 0 8px var(--danger);
+      transition: all 0.3s ease;
+    }
+    .status-dot.connecting {
+      background: var(--warning);
+      box-shadow: 0 0 10px var(--warning);
+      animation: pulse 1s infinite alternate;
+    }
+    .status-dot.connected {
+      background: var(--success);
+      box-shadow: 0 0 10px var(--success);
+    }
+
+    @keyframes pulse {
+      from { opacity: 0.4; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1.15); }
+    }
+
+    .brand-info {
+      display: flex;
+      flex-direction: column;
+    }
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 6px;
+      background: var(--bg-elevated);
+      color: var(--accent-active);
+      border: 1px solid var(--border);
+      font-weight: 600;
+    }
+    .status-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-top {
+      background: var(--bg-elevated);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      padding: 7px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: transform 0.1s, background 0.2s, border-color 0.2s;
+    }
+    .btn-top:active {
+      transform: scale(0.95);
+    }
+    .btn-top.primary {
+      background: var(--accent);
+      border-color: var(--accent-active);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+    .btn-top.danger {
+      background: rgba(239, 68, 68, 0.18);
+      border-color: var(--danger);
+      color: #fca5a5;
+    }
+    .btn-icon {
+      padding: 7px 9px;
+    }
+
+    .viewport-section {
+      padding: 10px 12px 6px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .screen-bezel {
+      width: 100%;
+      max-width: 560px;
+      aspect-ratio: 320 / 170;
+      background: #050608;
+      border: 2px solid #2b3548;
+      border-radius: 14px;
+      padding: 6px;
+      position: relative;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.65), inset 0 0 14px rgba(168, 85, 247, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .screen-bezel.active-stream {
+      border-color: var(--accent);
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.7), 0 0 15px var(--accent-glow);
+    }
+
+    canvas#bruceCanvas {
+      width: 100%;
+      height: 100%;
+      background: #000000;
+      border-radius: 8px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      display: block;
+    }
+
+    .screen-hud {
+      position: absolute;
+      top: 12px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      font-size: 10px;
+      font-family: monospace;
+      color: rgba(255, 255, 255, 0.55);
+      text-shadow: 0 1px 2px #000;
+    }
+
+    .screen-toolbar {
+      width: 100%;
+      max-width: 560px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .tool-btn {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 8px 6px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+    .tool-btn:active {
+      transform: scale(0.95);
+      background: var(--bg-elevated);
+      border-color: var(--accent);
+    }
+    .tool-btn.highlight {
+      border-color: rgba(168, 85, 247, 0.5);
+      color: var(--accent-active);
+    }
+
+    .workspace {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 4px 12px 10px;
+      max-width: 560px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .tabs {
+      display: flex;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 3px;
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+
+    .tab-btn {
+      flex: 1;
+      text-align: center;
+      padding: 7px 0;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: var(--bg-elevated);
+      color: var(--text-main);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    .tab-pane {
+      display: none;
+      flex: 1;
+      overflow-y: auto;
+      flex-direction: column;
+    }
+    .tab-pane.active {
+      display: flex;
+    }
+
+    .controller-layout {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      align-items: center;
+      padding: 4px 0;
+    }
+
+    .dpad-wrapper {
+      position: relative;
+      width: min(56vw, 230px);
+      height: min(56vw, 230px);
+      border-radius: 50%;
+      background: radial-gradient(circle at center, #1e2536 0%, #111520 75%, #0c0f17 100%);
+      border: 2px solid #2b3548;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.65), inset 0 2px 6px rgba(255,255,255,0.05);
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr 1fr;
+      padding: 8px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .dpad-wrapper.long-press-charge {
+      border-color: var(--warning);
+      box-shadow: 0 0 22px rgba(234, 179, 8, 0.45);
+    }
+    .dpad-wrapper.long-press-fired {
+      border-color: var(--success);
+      box-shadow: 0 0 26px rgba(34, 197, 94, 0.65);
+    }
+
+    .pad-btn {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.1s, transform 0.08s, border-color 0.15s, box-shadow 0.15s;
+      font-weight: 700;
+      font-size: 13px;
+      gap: 2px;
+      touch-action: none;
+    }
+
+    .pad-btn span.sub-label {
+      font-size: 9px;
+      font-weight: 500;
+      color: var(--text-muted);
+      letter-spacing: 0.3px;
+    }
+
+    .pad-btn.pressed {
+      background: var(--accent);
+      border-color: var(--accent-active);
+      box-shadow: 0 0 16px var(--accent-glow);
+      transform: scale(0.93);
+      color: #fff;
+    }
+    .pad-btn.pressed span.sub-label {
+      color: rgba(255,255,255,0.85);
+    }
+
+    .pad-up {
+      grid-column: 2;
+      grid-row: 1;
+      border-radius: 18px 18px 8px 8px;
+    }
+    .pad-left {
+      grid-column: 1;
+      grid-row: 2;
+      border-radius: 18px 8px 8px 18px;
+    }
+    .pad-center {
+      grid-column: 2;
+      grid-row: 2;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #273046, #191f2e);
+      border: 2px solid #3b4764;
+      margin: 4px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      font-size: 14px;
+    }
+    .pad-right {
+      grid-column: 3;
+      grid-row: 2;
+      border-radius: 8px 18px 18px 8px;
+    }
+    .pad-down {
+      grid-column: 2;
+      grid-row: 3;
+      border-radius: 8px 8px 18px 18px;
+    }
+
+    .aux-controls {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .aux-btn {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 8px;
+      color: var(--text-main);
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      cursor: pointer;
+      touch-action: none;
+      transition: all 0.1s;
+    }
+    .aux-btn small {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .aux-btn.pressed {
+      background: var(--accent);
+      border-color: var(--accent-active);
+      transform: scale(0.95);
+      box-shadow: 0 0 14px var(--accent-glow);
+    }
+
+    .terminal-box {
+      flex: 1;
+      background: #06080c;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 11px;
+      line-height: 1.45;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #d1d5db;
+      margin-bottom: 8px;
+    }
+    .log-tx { color: #c084fc; }
+    .log-rx { color: #4ade80; }
+    .log-sys { color: #60a5fa; }
+    .log-err { color: #f87171; }
+
+    .cli-shortcuts {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      flex-shrink: 0;
+    }
+    .chip {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-family: monospace;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .chip:active {
+      background: var(--accent);
+    }
+
+    .cli-input-row {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .cli-input {
+      flex: 1;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 12px;
+      color: var(--text-main);
+      font-family: monospace;
+      font-size: 13px;
+      outline: none;
+    }
+    .cli-input:focus {
+      border-color: var(--accent);
+    }
+
+    .settings-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-bottom: 12px;
+    }
+    .card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .card h3 {
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: var(--accent-active);
+    }
+    .card p {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      font-size: 12px;
+    }
+    select, input[type="number"] {
+      background: var(--bg-elevated);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      padding: 5px 8px;
+      border-radius: 8px;
+      font-size: 12px;
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%) translateY(120%);
+      background: #1e1b2e;
+      border: 1px solid var(--accent);
+      color: var(--text-main);
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.8);
+      z-index: 999;
+      max-width: 92vw;
+      text-align: center;
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+    #toast.error {
+      background: #2c1215;
+      border-color: var(--danger);
+      color: #fecaca;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div id="statusDot" class="status-dot"></div>
+      <div class="brand-info">
+        <div class="brand-title">
+          <span>BRUCE REMOTE</span>
+          <span id="batBadge" class="badge" style="display:none;">--%</span>
+        </div>
+        <div id="statusText" class="status-sub">Disconnected • Enable BLE API in Config</div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button id="btnConnect" class="btn-top primary" onclick="handleConnectionClick()">
+        <span id="btnConnectLabel">Connect</span>
+      </button>
+      <button id="btnReconnect" class="btn-top btn-icon" title="Reconnect" onclick="reconnectDevice()" style="display:none;">
+        ↻
+      </button>
+      <button class="btn-top btn-icon" title="Fullscreen" onclick="toggleFullscreen()">
+        ⛶
+      </button>
+    </div>
+  </header>
+
+  <section class="viewport-section">
+    <div id="screenBezel" class="screen-bezel">
+      <canvas id="bruceCanvas" width="320" height="170"></canvas>
+      <div class="screen-hud">
+        <span id="hudPkts">PKTS: 0 | CALLS: 0</span>
+        <span id="hudRes">320×170 RGB565</span>
+      </div>
+    </div>
+
+    <div class="screen-toolbar">
+      <button class="tool-btn highlight" onclick="requestRepaint()">
+        ↻ Repaint
+      </button>
+      <button class="tool-btn" onclick="toggleStream()">
+        <span id="streamStateLabel">▶ Stream ON</span>
+      </button>
+      <button class="tool-btn" onclick="saveScreenshot()">
+        📷 Capture
+      </button>
+      <button class="tool-btn" onclick="clearMirrorCanvas()">
+        🧹 Clear
+      </button>
+    </div>
+  </section>
+
+  <main class="workspace">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('pad', this)">Controls</button>
+      <button class="tab-btn" onclick="switchTab('cli', this)">Terminal (<span id="rxCount">0</span>)</button>
+      <button class="tab-btn" onclick="switchTab('cfg', this)">Config</button>
+    </div>
+
+    <div id="tab-pad" class="tab-pane active">
+      <div class="controller-layout">
+        <div id="dpad" class="dpad-wrapper">
+          <button class="pad-btn pad-up" data-action="up">
+            ▲
+            <span class="sub-label">PREV / UP</span>
+          </button>
+          <button class="pad-btn pad-left" data-action="left">
+            ◀
+            <span class="sub-label">LEFT</span>
+          </button>
+          <button class="pad-btn pad-center" data-action="select">
+            OK
+            <span class="sub-label">HOLD = LONG</span>
+          </button>
+          <button class="pad-btn pad-right" data-action="right">
+            ▶
+            <span class="sub-label">RIGHT</span>
+          </button>
+          <button class="pad-btn pad-down" data-action="down">
+            ▼
+            <span class="sub-label">NEXT / DOWN</span>
+          </button>
+        </div>
+
+        <div class="aux-controls">
+          <button class="aux-btn" data-action="back">
+            <span>↩ BACK / ESC</span>
+            <small>Return / Exit</small>
+          </button>
+          <button class="aux-btn" onclick="triggerLongPressManual()">
+            <span>⏱ LONG PRESS</span>
+            <small>Hold OK</small>
+          </button>
+          <button class="aux-btn" onclick="requestRepaint()">
+            <span>🔄 REPAINT</span>
+            <small>Refresh Frame</small>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-cli" class="tab-pane">
+      <div id="terminalLog" class="terminal-box"></div>
+      <div class="cli-shortcuts">
+        <button class="chip" onclick="sendRawCommand('info')">info</button>
+        <button class="chip" onclick="sendRawCommand('free')">free</button>
+        <button class="chip" onclick="sendRawCommand('storage free')">storage free</button>
+        <button class="chip" onclick="sendRawCommand('uptime')">uptime</button>
+        <button class="chip" onclick="sendRawCommand('screen on')">screen on</button>
+        <button class="chip" onclick="sendRawCommand('screen log on')">screen log on</button>
+        <button class="chip" onclick="sendRawCommand('settings')">settings</button>
+        <button class="chip" onclick="sendRawCommand('help')">help</button>
+      </div>
+      <div class="cli-input-row">
+        <input id="cliInput" class="cli-input" type="text" placeholder="Bruce CLI command (e.g. info, subghz...)" onkeydown="if(event.key==='Enter') sendFromInput()">
+        <button class="btn-top primary" onclick="sendFromInput()">Send</button>
+      </div>
+    </div>
+
+    <div id="tab-cfg" class="tab-pane">
+      <div class="settings-list">
+        <div class="card">
+          <h3>BLE & Navigation Options</h3>
+          <p>Bruce firmware truncates its BLE advertisement name to <code>Bruc</code> with Scan Response disabled. Default scanner filter matches the native client.</p>
+          <div class="setting-row">
+            <span>BLE Scanner Filter</span>
+            <select id="scanModeSelect">
+              <option value="prefix" selected>Prefix "Bruc" (Default)</option>
+              <option value="all">All BLE Devices (Fallback)</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <span>Navigation Command Profile</span>
+            <select id="navProfileSelect">
+              <option value="dual" selected>Bruce CLI (Default)</option>
+              <option value="screen">screen up / down / select / esc</option>
+              <option value="nav">nav up / down / select / back</option>
+              <option value="raw">Direct (up / down / select / esc)</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <span>Long Press Threshold (ms)</span>
+            <input id="longPressMs" type="number" value="450" min="250" max="1500" step="50" style="width:80px;">
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Device Diagnostics</h3>
+          <p id="deviceInfoSummary">Device disconnected. <code>info</code> and <code>free</code> probes run automatically on connection.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+
+  <script>
+    const BRUCE_BLE = {
+      SERIAL_SERVICE_UUID: '4371ec0b-3d43-49f9-b731-7c72a4a7bb91',
+      SERIAL_CHAR_UUID:    'd555ed97-bf2a-4f46-b3eb-d1fcdd7325e9',
+      NUS_SERVICE_UUID:    '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+      NUS_RX_CHAR_UUID:    '6e400002-b5a3-f393-e0a9-e50e24dcca9e',
+      NUS_TX_CHAR_UUID:    '6e400003-b5a3-f393-e0a9-e50e24dcca9e',
+      BATTERY_SERVICE_UUID: 0x180f,
+      BATTERY_CHAR_UUID:    0x2a19
+    };
+
+    const SCREEN_WIDTH = 320;
+    const SCREEN_HEIGHT = 170;
+
+    let bleDevice = null;
+    let gattServer = null;
+    let writeCharacteristic = null;
+    let notifyCharacteristic = null;
+    let isConnected = false;
+    let isStreaming = true;
+
+    const txQueue = [];
+    let isWriting = false;
+    const BLE_CHUNK_SIZE = 180;
+
+    let rxLineBuffer = '';
+    let rxBinaryBuffer = new Uint8Array(0);
+    let rxPacketsCount = 0;
+    let drawCallsCount = 0;
+    let currentFrameCalls = [];
+
+    const canvas = document.getElementById('bruceCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    function drawStandbyScreen(message = 'READY TO PAIR OVER BLE') {
+      ctx.fillStyle = '#07090e';
+      ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+      ctx.strokeStyle = '#a855f7';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(4, 4, SCREEN_WIDTH - 8, SCREEN_HEIGHT - 8);
+
+      ctx.fillStyle = '#181c28';
+      ctx.fillRect(6, 6, SCREEN_WIDTH - 12, 22);
+
+      ctx.fillStyle = '#c084fc';
+      ctx.font = 'bold 12px monospace';
+      ctx.textBaseline = 'top';
+      ctx.fillText('BRUCE REMOTE // LILYGO T-EMBED', 12, 11);
+
+      ctx.fillStyle = '#f3f4f6';
+      ctx.font = 'bold 15px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('BRUCE BLE MIRROR (320×170)', SCREEN_WIDTH / 2, 62);
+
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '11px monospace';
+      ctx.fillText(message, SCREEN_WIDTH / 2, 88);
+
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '10px monospace';
+      ctx.fillText('On device: Config -> Advanced -> Toggle BLE API', SCREEN_WIDTH / 2, 116);
+      ctx.textAlign = 'left';
+    }
+
+    drawStandbyScreen();
+
+    async function handleConnectionClick() {
+      if (isConnected) {
+        disconnectDevice();
+      } else {
+        await connectDevice();
+      }
+    }
+
+    async function connectDevice() {
+      if (!navigator.bluetooth) {
+        showToast('Web Bluetooth is not supported in this browser.', true);
+        logTerminal('ERR: navigator.bluetooth is not available.', 'log-err');
+        return;
+      }
+
+      try {
+        setConnectionStatus('connecting', 'Scanning for Bruce (BLE)...');
+        const scanMode = document.getElementById('scanModeSelect').value;
+
+        const optionalServices = [
+          BRUCE_BLE.SERIAL_SERVICE_UUID,
+          BRUCE_BLE.NUS_SERVICE_UUID,
+          BRUCE_BLE.BATTERY_SERVICE_UUID
+        ];
+
+        const requestOptions = scanMode === 'prefix'
+          ? {
+              filters: [
+                { namePrefix: 'Bruc' },
+                { namePrefix: 'bruc' },
+                { services: [BRUCE_BLE.SERIAL_SERVICE_UUID] },
+                { services: [BRUCE_BLE.NUS_SERVICE_UUID] }
+              ],
+              optionalServices
+            }
+          : {
+              acceptAllDevices: true,
+              optionalServices
+            };
+
+        logTerminal('Scanning for BLE devices...', 'log-sys');
+        bleDevice = await navigator.bluetooth.requestDevice(requestOptions);
+
+        bleDevice.removeEventListener('gattserverdisconnected', onGattDisconnected);
+        bleDevice.addEventListener('gattserverdisconnected', onGattDisconnected);
+
+        await establishGattLink();
+
+      } catch (err) {
+        setConnectionStatus('disconnected', 'Disconnected');
+        handleBleError(err);
+      }
+    }
+
+    async function establishGattLink() {
+      if (!bleDevice) return;
+      setConnectionStatus('connecting', `Connecting to ${bleDevice.name || 'Bruce'}...`);
+      logTerminal(`Connecting to GATT server on ${bleDevice.name || bleDevice.id}...`, 'log-sys');
+
+      gattServer = await bleDevice.gatt.connect();
+
+      let serviceFound = false;
+      try {
+        const bruceService = await gattServer.getPrimaryService(BRUCE_BLE.SERIAL_SERVICE_UUID);
+        const serialChar = await bruceService.getCharacteristic(BRUCE_BLE.SERIAL_CHAR_UUID);
+        writeCharacteristic = serialChar;
+        notifyCharacteristic = serialChar;
+        serviceFound = true;
+        logTerminal('Attached to Bruce Serial Service (4371EC0B)', 'log-sys');
+      } catch (_) {
+        try {
+          const nusService = await gattServer.getPrimaryService(BRUCE_BLE.NUS_SERVICE_UUID);
+          writeCharacteristic = await nusService.getCharacteristic(BRUCE_BLE.NUS_RX_CHAR_UUID);
+          notifyCharacteristic = await nusService.getCharacteristic(BRUCE_BLE.NUS_TX_CHAR_UUID);
+          serviceFound = true;
+          logTerminal('Attached to Nordic UART Service (NUS Fallback)', 'log-sys');
+        } catch (innerErr) {
+          throw new Error('Neither Bruce Serial nor NUS service found. Verify BLE API is enabled on the device.');
+        }
+      }
+
+      if (serviceFound && notifyCharacteristic) {
+        await notifyCharacteristic.startNotifications();
+        notifyCharacteristic.removeEventListener('characteristicvaluechanged', onBleNotification);
+        notifyCharacteristic.addEventListener('characteristicvaluechanged', onBleNotification);
+      }
+
+      readBatteryLevel();
+
+      isConnected = true;
+      setConnectionStatus('connected', `${bleDevice.name || 'Bruce'} • Connected`);
+      document.getElementById('btnReconnect').style.display = 'inline-flex';
+      document.getElementById('screenBezel').classList.add('active-stream');
+      vibrate([30, 50, 30]);
+      showToast(`Connected to ${bleDevice.name || 'Bruce'}`);
+
+      setTimeout(async () => {
+        await enqueueCommand('info');
+        await enqueueCommand('free');
+        await requestRepaint(true);
+      }, 250);
+    }
+
+    async function reconnectDevice() {
+      if (!bleDevice) {
+        await connectDevice();
+        return;
+      }
+      try {
+        if (bleDevice.gatt.connected) {
+          bleDevice.gatt.disconnect();
+        }
+        await establishGattLink();
+      } catch (err) {
+        handleBleError(err);
+      }
+    }
+
+    function disconnectDevice() {
+      if (bleDevice && bleDevice.gatt.connected) {
+        bleDevice.gatt.disconnect();
+      } else {
+        onGattDisconnected();
+      }
+    }
+
+    function onGattDisconnected() {
+      isConnected = false;
+      writeCharacteristic = null;
+      notifyCharacteristic = null;
+      setConnectionStatus('disconnected', 'Connection lost • Tap ↻ to reconnect');
+      document.getElementById('screenBezel').classList.remove('active-stream');
+      logTerminal('BLE link disconnected.', 'log-err');
+      showToast('Device disconnected', true);
+      vibrate(80);
+    }
+
+    async function readBatteryLevel() {
+      try {
+        const batService = await gattServer.getPrimaryService(BRUCE_BLE.BATTERY_SERVICE_UUID);
+        const batChar = await batService.getCharacteristic(BRUCE_BLE.BATTERY_CHAR_UUID);
+        const val = await batChar.readValue();
+        const pct = val.getUint8(0);
+        const badge = document.getElementById('batBadge');
+        badge.textContent = `🔋 ${pct}%`;
+        badge.style.display = 'inline-block';
+      } catch (_) {}
+    }
+
+    async function enqueueCommand(cmdString) {
+      if (!isConnected || !writeCharacteristic) {
+        showToast('Connect to a Bruce device over BLE first', true);
+        return;
+      }
+      const payload = cmdString.endsWith('\r\n') ? cmdString : cmdString + '\r\n';
+      txQueue.push(payload);
+      processTxQueue();
+    }
+
+    async function processTxQueue() {
+      if (isWriting || txQueue.length === 0 || !writeCharacteristic) return;
+      isWriting = true;
+
+      const encoder = new TextEncoder();
+      while (txQueue.length > 0 && isConnected && writeCharacteristic) {
+        const cmd = txQueue.shift();
+        logTerminal(`> ${cmd.trim()}`, 'log-tx');
+        const bytes = encoder.encode(cmd);
+
+        try {
+          for (let offset = 0; offset < bytes.length; offset += BLE_CHUNK_SIZE) {
+            const chunk = bytes.slice(offset, offset + BLE_CHUNK_SIZE);
+            if (writeCharacteristic.properties.writeWithoutResponse) {
+              await writeCharacteristic.writeValueWithoutResponse(chunk);
+            } else {
+              await writeCharacteristic.writeValue(chunk);
+            }
+          }
+        } catch (err) {
+          logTerminal(`BLE write error: ${err.message}`, 'log-err');
+          break;
+        }
+      }
+
+      isWriting = false;
+    }
+
+    function onBleNotification(event) {
+      const value = event.target.value;
+      const chunk = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+      rxPacketsCount++;
+      updateHud();
+
+      if (isBinaryFrameChunk(chunk)) {
+        handleBinaryScreenChunk(chunk);
+        return;
+      }
+
+      const decoder = new TextDecoder('utf-8', { fatal: false });
+      rxLineBuffer += decoder.decode(chunk, { stream: true });
+
+      if (rxLineBuffer.length > 65536) {
+        rxLineBuffer = rxLineBuffer.slice(-32768);
+      }
+
+      let newlineIdx;
+      while ((newlineIdx = rxLineBuffer.indexOf('\n')) !== -1) {
+        const rawLine = rxLineBuffer.slice(0, newlineIdx).replace(/\r$/, '');
+        rxLineBuffer = rxLineBuffer.slice(newlineIdx + 1);
+        processIncomingLine(rawLine);
+      }
+    }
+
+    function processIncomingLine(line) {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      if (isStreaming && parseAndExecuteDrawCall(trimmed)) {
+        drawCallsCount++;
+        updateHud();
+        return;
+      }
+
+      logTerminal(trimmed, 'log-rx');
+      updateDeviceInfoCard(trimmed);
+    }
+
+    function rgb565ToCss(colorVal) {
+      if (typeof colorVal === 'string') {
+        const s = colorVal.trim();
+        if (s.startsWith('#')) return s;
+        colorVal = s.startsWith('0x') || s.startsWith('0X')
+          ? parseInt(s, 16)
+          : parseInt(s, 10);
+      }
+      if (isNaN(colorVal)) return '#ffffff';
+
+      if (colorVal > 0xFFFF) {
+        const r = (colorVal >> 16) & 0xFF;
+        const g = (colorVal >> 8) & 0xFF;
+        const b = colorVal & 0xFF;
+        return `rgb(${r},${g},${b})`;
+      }
+
+      const r5 = (colorVal >> 11) & 0x1F;
+      const g6 = (colorVal >> 5) & 0x3F;
+      const b5 = colorVal & 0x1F;
+
+      const r8 = (r5 << 3) | (r5 >> 2);
+      const g8 = (g6 << 2) | (g6 >> 4);
+      const b8 = (b5 << 3) | (b5 >> 2);
+      return `rgb(${r8},${g8},${b8})`;
+    }
+
+    function parseAndExecuteDrawCall(line) {
+      let payload = line.replace(/^(\[?(SCREEN|SCR|TFT|DRAW|GUI)\]?:?\s*)/i, '');
+
+      if (payload.startsWith('{') && payload.endsWith('}')) {
+        try {
+          const obj = JSON.parse(payload);
+          const cmd = obj.cmd || obj.type || obj.fn || obj.c;
+          if (cmd) {
+            return dispatchDrawCommand(cmd, obj);
+          }
+        } catch (_) {}
+      }
+
+      const fnMatch = payload.match(/^([a-zA-Z0-9_]+)\s*\((.*)\)$/);
+      if (fnMatch) {
+        const fnName = fnMatch[1];
+        const args = splitArgsRespectingQuotes(fnMatch[2]);
+        if (executeTftMethod(fnName, args)) return true;
+      }
+
+      const kvMatch = payload.match(/^([a-zA-Z_]{2,18})[:\s,;|\t]+(.+)$/);
+      if (kvMatch) {
+        const fnName = kvMatch[1];
+        const rawRest = kvMatch[2];
+        const args = rawRest.includes(',')
+          ? splitArgsRespectingQuotes(rawRest, ',')
+          : rawRest.includes('|')
+            ? splitArgsRespectingQuotes(rawRest, '|')
+            : splitArgsRespectingQuotes(rawRest, ' ');
+        if (executeTftMethod(fnName, args)) return true;
+      }
+
+      return false;
+    }
+
+    function splitArgsRespectingQuotes(str, delimiter = ',') {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      let quoteChar = '';
+
+      for (let i = 0; i < str.length; i++) {
+        const ch = str[i];
+        if ((ch === '"' || ch === "'") && str[i - 1] !== '\\') {
+          if (!inQuotes) {
+            inQuotes = true;
+            quoteChar = ch;
+          } else if (ch === quoteChar) {
+            inQuotes = false;
+          } else {
+            current += ch;
+          }
+        } else if (!inQuotes && ch === delimiter) {
+          if (delimiter !== ' ' || current.length > 0) {
+            result.push(current.trim());
+            current = '';
+          }
+        } else {
+          current += ch;
+        }
+      }
+      if (current.trim().length > 0 || result.length > 0) {
+        result.push(current.trim());
+      }
+      return result;
+    }
+
+    function dispatchDrawCommand(cmdName, obj) {
+      const name = String(cmdName).toLowerCase();
+      switch (name) {
+        case 'fillscreen':
+        case 'cls':
+        case 'clear':
+          return executeTftMethod('fillScreen', [obj.color ?? obj.c ?? 0]);
+        case 'fillrect':
+        case 'fr':
+          return executeTftMethod('fillRect', [obj.x, obj.y, obj.w, obj.h, obj.color ?? obj.c]);
+        case 'drawrect':
+        case 'dr':
+          return executeTftMethod('drawRect', [obj.x, obj.y, obj.w, obj.h, obj.color ?? obj.c]);
+        case 'drawroundrect':
+          return executeTftMethod('drawRoundRect', [obj.x, obj.y, obj.w, obj.h, obj.r, obj.color ?? obj.c]);
+        case 'fillroundrect':
+          return executeTftMethod('fillRoundRect', [obj.x, obj.y, obj.w, obj.h, obj.r, obj.color ?? obj.c]);
+        case 'drawline':
+        case 'dl':
+          return executeTftMethod('drawLine', [obj.x0 ?? obj.x, obj.y0 ?? obj.y, obj.x1 ?? obj.x2, obj.y1 ?? obj.y2, obj.color ?? obj.c]);
+        case 'drawstring':
+        case 'text':
+        case 'print':
+        case 'ds':
+          return executeTftMethod('drawString', [obj.text ?? obj.str ?? obj.s, obj.x, obj.y, obj.color ?? obj.fg ?? 0xFFFF, obj.size ?? obj.font ?? 1, obj.bg]);
+        case 'drawcentystring':
+        case 'drawcentrestri':
+        case 'drawcentrestring':
+        case 'drawcenterstring':
+          return executeTftMethod('drawCentreString', [obj.text ?? obj.str ?? obj.s, obj.x, obj.y, obj.color ?? obj.fg ?? 0xFFFF, obj.size ?? obj.font ?? 1]);
+        case 'drawrightstring':
+          return executeTftMethod('drawRightString', [obj.text ?? obj.str ?? obj.s, obj.x, obj.y, obj.color ?? obj.fg ?? 0xFFFF, obj.size ?? obj.font ?? 1]);
+        case 'drawcircle':
+          return executeTftMethod('drawCircle', [obj.x, obj.y, obj.r, obj.color ?? obj.c]);
+        case 'fillcircle':
+          return executeTftMethod('fillCircle', [obj.x, obj.y, obj.r, obj.color ?? obj.c]);
+        case 'drawpixel':
+        case 'pixel':
+          return executeTftMethod('drawPixel', [obj.x, obj.y, obj.color ?? obj.c]);
+        default:
+          return false;
+      }
+    }
+
+    const tftState = {
+      cursorX: 0,
+      cursorY: 0,
+      textColor: '#ffffff',
+      textBg: null,
+      textSize: 1,
+      textDatum: 0
+    };
+
+    function executeTftMethod(rawName, args) {
+      const fn = rawName.toLowerCase().replace(/^tft\./, '');
+      const num = (idx, def = 0) => {
+        const v = args[idx];
+        if (v === undefined || v === null || v === '') return def;
+        return typeof v === 'string' && (v.startsWith('0x') || v.startsWith('0X'))
+          ? parseInt(v, 16)
+          : Number(v);
+      };
+
+      switch (fn) {
+        case 'fillscreen':
+        case 'clearscreen':
+        case 'cls': {
+          const color = rgb565ToCss(args[0] ?? 0);
+          currentFrameCalls = [{ fn: 'fillScreen', args: [color] }];
+          ctx.fillStyle = color;
+          ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+          return true;
+        }
+
+        case 'fillrect':
+        case 'drawfillrect':
+        case 'fr': {
+          if (args.length < 5) return false;
+          const x = num(0), y = num(1), w = num(2), h = num(3);
+          const color = rgb565ToCss(args[4]);
+          if (x <= 0 && y <= 0 && w >= SCREEN_WIDTH && h >= SCREEN_HEIGHT) {
+            currentFrameCalls = [];
+          }
+          currentFrameCalls.push({ fn: 'fillRect', args: [x, y, w, h, color] });
+          ctx.fillStyle = color;
+          ctx.fillRect(x, y, w, h);
+          return true;
+        }
+
+        case 'drawrect':
+        case 'dr': {
+          if (args.length < 5) return false;
+          const x = num(0), y = num(1), w = num(2), h = num(3);
+          const color = rgb565ToCss(args[4]);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x + 0.5, y + 0.5, w, h);
+          return true;
+        }
+
+        case 'drawroundrect':
+        case 'rrect': {
+          if (args.length < 6) return false;
+          const x = num(0), y = num(1), w = num(2), h = num(3), r = num(4);
+          ctx.strokeStyle = rgb565ToCss(args[5]);
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.roundRect(x + 0.5, y + 0.5, w, h, r);
+          ctx.stroke();
+          return true;
+        }
+
+        case 'fillroundrect':
+        case 'frrect': {
+          if (args.length < 6) return false;
+          const x = num(0), y = num(1), w = num(2), h = num(3), r = num(4);
+          ctx.fillStyle = rgb565ToCss(args[5]);
+          ctx.beginPath();
+          ctx.roundRect(x, y, w, h, r);
+          ctx.fill();
+          return true;
+        }
+
+        case 'drawline':
+        case 'dl': {
+          if (args.length < 5) return false;
+          const x0 = num(0), y0 = num(1), x1 = num(2), y1 = num(3);
+          ctx.strokeStyle = rgb565ToCss(args[4]);
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x0 + 0.5, y0 + 0.5);
+          ctx.lineTo(x1 + 0.5, y1 + 0.5);
+          ctx.stroke();
+          return true;
+        }
+
+        case 'drawfastvline':
+        case 'vline': {
+          if (args.length < 4) return false;
+          const x = num(0), y = num(1), h = num(2);
+          ctx.fillStyle = rgb565ToCss(args[3]);
+          ctx.fillRect(x, y, 1, h);
+          return true;
+        }
+
+        case 'drawfasthline':
+        case 'hline': {
+          if (args.length < 4) return false;
+          const x = num(0), y = num(1), w = num(2);
+          ctx.fillStyle = rgb565ToCss(args[3]);
+          ctx.fillRect(x, y, w, 1);
+          return true;
+        }
+
+        case 'drawcircle':
+        case 'circle': {
+          if (args.length < 4) return false;
+          const x = num(0), y = num(1), r = num(2);
+          ctx.strokeStyle = rgb565ToCss(args[3]);
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.stroke();
+          return true;
+        }
+
+        case 'fillcircle':
+        case 'fcircle': {
+          if (args.length < 4) return false;
+          const x = num(0), y = num(1), r = num(2);
+          ctx.fillStyle = rgb565ToCss(args[3]);
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fill();
+          return true;
+        }
+
+        case 'drawarc': {
+          if (args.length < 7) return false;
+          const x = num(0), y = num(1), r = num(2), ir = num(3);
+          const startAngle = (num(4) - 90) * (Math.PI / 180);
+          const endAngle = (num(5) - 90) * (Math.PI / 180);
+          ctx.strokeStyle = rgb565ToCss(args[6]);
+          ctx.lineWidth = Math.max(1, r - ir);
+          ctx.beginPath();
+          ctx.arc(x, y, (r + ir) / 2, startAngle, endAngle);
+          ctx.stroke();
+          return true;
+        }
+
+        case 'drawtriangle': {
+          if (args.length < 7) return false;
+          ctx.strokeStyle = rgb565ToCss(args[6]);
+          ctx.beginPath();
+          ctx.moveTo(num(0), num(1));
+          ctx.lineTo(num(2), num(3));
+          ctx.lineTo(num(4), num(5));
+          ctx.closePath();
+          ctx.stroke();
+          return true;
+        }
+
+        case 'filltriangle': {
+          if (args.length < 7) return false;
+          ctx.fillStyle = rgb565ToCss(args[6]);
+          ctx.beginPath();
+          ctx.moveTo(num(0), num(1));
+          ctx.lineTo(num(2), num(3));
+          ctx.lineTo(num(4), num(5));
+          ctx.closePath();
+          ctx.fill();
+          return true;
+        }
+
+        case 'drawpixel':
+        case 'pixel': {
+          if (args.length < 3) return false;
+          ctx.fillStyle = rgb565ToCss(args[2]);
+          ctx.fillRect(num(0), num(1), 1, 1);
+          return true;
+        }
+
+        case 'settextcolor': {
+          tftState.textColor = rgb565ToCss(args[0]);
+          tftState.textBg = args.length > 1 ? rgb565ToCss(args[1]) : null;
+          return true;
+        }
+        case 'settextsize': {
+          tftState.textSize = Math.max(1, num(0, 1));
+          return true;
+        }
+        case 'setcursor': {
+          tftState.cursorX = num(0);
+          tftState.cursorY = num(1);
+          return true;
+        }
+        case 'settextdatum': {
+          tftState.textDatum = num(0);
+          return true;
+        }
+
+        case 'drawstring':
+        case 'drawcentrestri':
+        case 'drawcentrestring':
+        case 'drawcenterstring':
+        case 'drawrightstring':
+        case 'ds':
+        case 'text': {
+          if (args.length < 3) return false;
+          let text, x, y, color = tftState.textColor, size = tftState.textSize;
+
+          if (!isNaN(Number(args[0])) && !isNaN(Number(args[1])) && isNaN(Number(args[2]))) {
+            x = num(0);
+            y = num(1);
+            text = String(args[2]);
+          } else {
+            text = String(args[0]);
+            x = num(1);
+            y = num(2);
+          }
+
+          if (args.length >= 4 && args[3] !== undefined) {
+            const v3 = num(3);
+            if (v3 > 8) color = rgb565ToCss(args[3]);
+            else size = Math.max(1, v3);
+          }
+          if (args.length >= 5 && args[4] !== undefined) {
+            const v4 = num(4);
+            if (v4 <= 8) size = Math.max(1, v4);
+            else color = rgb565ToCss(args[4]);
+          }
+
+          const fontPx = Math.max(9, size * 8);
+          ctx.font = `bold ${fontPx}px monospace`;
+          ctx.textBaseline = 'top';
+
+          if (fn.includes('centre') || fn.includes('center') || tftState.textDatum === 1 || tftState.textDatum === 4) {
+            ctx.textAlign = 'center';
+          } else if (fn.includes('right') || tftState.textDatum === 2) {
+            ctx.textAlign = 'right';
+          } else {
+            ctx.textAlign = 'left';
+          }
+
+          if (tftState.textBg) {
+            const metrics = ctx.measureText(text);
+            const bgX = ctx.textAlign === 'center' ? x - metrics.width / 2 : (ctx.textAlign === 'right' ? x - metrics.width : x);
+            ctx.fillStyle = tftState.textBg;
+            ctx.fillRect(bgX, y, metrics.width, fontPx + 2);
+          }
+
+          ctx.fillStyle = color;
+          ctx.fillText(text, x, y);
+          ctx.textAlign = 'left';
+          return true;
+        }
+
+        case 'drawbitmap':
+        case 'drawxbitmap':
+        case 'pushimage': {
+          if (args.length < 5) return false;
+          const x = num(0), y = num(1), w = num(2), h = num(3);
+          const hexData = String(args[4]).replace(/[^0-9a-fA-F]/g, '');
+          const fgColor = args.length >= 6 ? rgb565ToCss(args[5]) : tftState.textColor;
+
+          if (hexData.length > 0) {
+            ctx.fillStyle = fgColor;
+            let bitIndex = 0;
+            for (let row = 0; row < h; row++) {
+              for (let col = 0; col < w; col++) {
+                const bytePos = Math.floor(bitIndex / 8) * 2;
+                if (bytePos + 2 <= hexData.length) {
+                  const byteVal = parseInt(hexData.substr(bytePos, 2), 16);
+                  const bitMask = 1 << (7 - (bitIndex % 8));
+                  if (byteVal & bitMask) {
+                    ctx.fillRect(x + col, y + row, 1, 1);
+                  }
+                }
+                bitIndex++;
+              }
+            }
+          }
+          return true;
+        }
+
+        default:
+          return false;
+      }
+    }
+
+    function isBinaryFrameChunk(chunk) {
+      if (rxBinaryBuffer.length > 0) return true;
+      if (chunk.length >= 4 && chunk[0] === 0xAA && chunk[1] === 0x55) return true;
+      return false;
+    }
+
+    function handleBinaryScreenChunk(chunk) {
+      const merged = new Uint8Array(rxBinaryBuffer.length + chunk.length);
+      merged.set(rxBinaryBuffer, 0);
+      merged.set(chunk, rxBinaryBuffer.length);
+      rxBinaryBuffer = merged;
+
+      if (rxBinaryBuffer.length >= 10) {
+        const view = new DataView(rxBinaryBuffer.buffer);
+        const x = view.getUint16(2, true);
+        const y = view.getUint16(4, true);
+        const w = view.getUint16(6, true);
+        const h = view.getUint16(8, true);
+        const expectedBytes = 10 + w * h * 2;
+
+        if (w > 0 && w <= SCREEN_WIDTH && h > 0 && h <= SCREEN_HEIGHT) {
+          if (rxBinaryBuffer.length >= expectedBytes) {
+            const imgData = ctx.createImageData(w, h);
+            let srcOffset = 10;
+            let dstOffset = 0;
+            for (let i = 0; i < w * h; i++) {
+              const c = view.getUint16(srcOffset, true);
+              srcOffset += 2;
+              imgData.data[dstOffset++] = ((c >> 11) & 0x1F) * 255 / 31;
+              imgData.data[dstOffset++] = ((c >> 5) & 0x3F) * 255 / 63;
+              imgData.data[dstOffset++] = (c & 0x1F) * 255 / 31;
+              imgData.data[dstOffset++] = 255;
+            }
+            ctx.putImageData(imgData, x, y);
+            drawCallsCount++;
+            updateHud();
+            rxBinaryBuffer = rxBinaryBuffer.slice(expectedBytes);
+          }
+        } else {
+          rxBinaryBuffer = new Uint8Array(0);
+        }
+      }
+    }
+
+    const NAV_MAP = {
+      dual: {
+        up:         ['screen up', 'nav up'],
+        down:       ['screen down', 'nav down'],
+        left:       ['screen left', 'nav left'],
+        right:      ['screen right', 'nav right'],
+        select:     ['screen select', 'nav select'],
+        longSelect: ['screen long', 'nav long'],
+        back:       ['screen esc', 'nav back']
+      },
+      screen: {
+        up:         ['screen up'],
+        down:       ['screen down'],
+        left:       ['screen left'],
+        right:      ['screen right'],
+        select:     ['screen select'],
+        longSelect: ['screen long'],
+        back:       ['screen esc']
+      },
+      nav: {
+        up:         ['nav up'],
+        down:       ['nav down'],
+        left:       ['nav left'],
+        right:      ['nav right'],
+        select:     ['nav select'],
+        longSelect: ['nav long'],
+        back:       ['nav back']
+      },
+      raw: {
+        up:         ['up'],
+        down:       ['down'],
+        left:       ['left'],
+        right:      ['right'],
+        select:     ['select'],
+        longSelect: ['long'],
+        back:       ['esc']
+      }
+    };
+
+    async function sendNavigationAction(action, isLong = false) {
+      const profileKey = document.getElementById('navProfileSelect').value || 'dual';
+      const profile = NAV_MAP[profileKey] || NAV_MAP.dual;
+
+      let key = action;
+      if (isLong && action === 'select') {
+        key = 'longSelect';
+      }
+
+      const cmds = profile[key] || [action];
+      await enqueueCommand(cmds[0]);
+    }
+
+    async function requestRepaint(silent = false) {
+      if (!silent) vibrate(20);
+      if (!isConnected) {
+        if (!silent) showToast('Device is not connected', true);
+        return;
+      }
+      await enqueueCommand('screen repaint');
+    }
+
+    function triggerLongPressManual() {
+      vibrate([35, 40, 75]);
+      sendNavigationAction('select', true);
+      showToast('Long Press (Hold OK) sent');
+    }
+
+    function initInteractivePads() {
+      const dpadEl = document.getElementById('dpad');
+      const interactiveBtns = document.querySelectorAll('[data-action]');
+
+      interactiveBtns.forEach(btn => {
+        const action = btn.getAttribute('data-action');
+        let pressTimer = null;
+        let repeatInterval = null;
+        let longPressFired = false;
+
+        const startPress = (e) => {
+          e.preventDefault();
+          btn.classList.add('pressed');
+          vibrate(15);
+          longPressFired = false;
+
+          const threshold = parseInt(document.getElementById('longPressMs').value, 10) || 450;
+
+          if (action === 'select' || action === 'back') {
+            dpadEl.classList.add('long-press-charge');
+            pressTimer = setTimeout(() => {
+              longPressFired = true;
+              dpadEl.classList.remove('long-press-charge');
+              dpadEl.classList.add('long-press-fired');
+              vibrate([40, 30, 80]);
+              sendNavigationAction(action === 'select' ? 'select' : 'back', true);
+            }, threshold);
+          } else {
+            sendNavigationAction(action, false);
+            pressTimer = setTimeout(() => {
+              repeatInterval = setInterval(() => {
+                vibrate(8);
+                sendNavigationAction(action, false);
+              }, 160);
+            }, threshold);
+          }
+        };
+
+        const endPress = (e) => {
+          if (!btn.classList.contains('pressed')) return;
+          e.preventDefault();
+          btn.classList.remove('pressed');
+          dpadEl.classList.remove('long-press-charge', 'long-press-fired');
+
+          if (pressTimer) {
+            clearTimeout(pressTimer);
+            pressTimer = null;
+          }
+          if (repeatInterval) {
+            clearInterval(repeatInterval);
+            repeatInterval = null;
+          }
+
+          if ((action === 'select' || action === 'back') && !longPressFired) {
+            sendNavigationAction(action, false);
+          }
+        };
+
+        btn.addEventListener('pointerdown', startPress);
+        btn.addEventListener('pointerup', endPress);
+        btn.addEventListener('pointercancel', endPress);
+        btn.addEventListener('pointerleave', endPress);
+      });
+    }
+
+    initInteractivePads();
+
+    function setConnectionStatus(state, text) {
+      const dot = document.getElementById('statusDot');
+      const statusText = document.getElementById('statusText');
+      const btn = document.getElementById('btnConnect');
+      const btnLabel = document.getElementById('btnConnectLabel');
+
+      dot.className = 'status-dot ' + (state === 'connected' ? 'connected' : state === 'connecting' ? 'connecting' : '');
+      statusText.textContent = text;
+
+      if (state === 'connected') {
+        btn.className = 'btn-top danger';
+        btnLabel.textContent = 'Disconnect';
+      } else if (state === 'connecting') {
+        btn.className = 'btn-top';
+        btnLabel.textContent = 'Connecting...';
+      } else {
+        btn.className = 'btn-top primary';
+        btnLabel.textContent = 'Connect';
+      }
+    }
+
+    function updateHud() {
+      document.getElementById('hudPkts').textContent = `PKTS: ${rxPacketsCount} | CALLS: ${drawCallsCount}`;
+      document.getElementById('rxCount').textContent = rxPacketsCount;
+    }
+
+    function toggleStream() {
+      isStreaming = !isStreaming;
+      const lbl = document.getElementById('streamStateLabel');
+      lbl.textContent = isStreaming ? '▶ Stream ON' : '⏸ Stream OFF';
+      vibrate(15);
+    }
+
+    function clearMirrorCanvas() {
+      vibrate(15);
+      currentFrameCalls = [];
+      drawCallsCount = 0;
+      updateHud();
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    }
+
+    function saveScreenshot() {
+      vibrate(25);
+      const dataUrl = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `bruce-screen-${Date.now()}.png`;
+      a.click();
+      showToast('320×170 capture saved');
+    }
+
+    function sendRawCommand(cmd) {
+      vibrate(15);
+      enqueueCommand(cmd);
+    }
+
+    function sendFromInput() {
+      const input = document.getElementById('cliInput');
+      const val = input.value.trim();
+      if (!val) return;
+      enqueueCommand(val);
+      input.value = '';
+    }
+
+    function logTerminal(text, cls = '') {
+      const box = document.getElementById('terminalLog');
+      const line = document.createElement('div');
+      if (cls) line.className = cls;
+      const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+      line.textContent = `[${time}] ${text}`;
+      box.appendChild(line);
+      if (box.childNodes.length > 250) {
+        box.removeChild(box.firstChild);
+      }
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function updateDeviceInfoCard(line) {
+      const el = document.getElementById('deviceInfoSummary');
+      if (/bruce|firmware|heap|psram|model|lilygo|embed|sd|littlefs/i.test(line)) {
+        if (el.textContent.startsWith('Device disconnected')) {
+          el.textContent = '';
+        }
+        el.textContent += line + ' • ';
+      }
+    }
+
+    function switchTab(tabId, btnEl) {
+      vibrate(10);
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      btnEl.classList.add('active');
+      document.getElementById('tab-' + tabId).classList.add('active');
+    }
+
+    function toggleFullscreen() {
+      vibrate(15);
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    function vibrate(pattern = 15) {
+      if (navigator.vibrate) {
+        try { navigator.vibrate(pattern); } catch (_) {}
+      }
+    }
+
+    let toastTimeout = null;
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = isError ? 'show error' : 'show';
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        t.className = '';
+      }, 3600);
+    }
+
+    function handleBleError(err) {
+      const msg = err?.message || String(err);
+      logTerminal(`BLE Error: ${msg}`, 'log-err');
+
+      if (msg.includes('User cancelled')) {
+        showToast('Device selection cancelled');
+      } else if (msg.includes('globally disabled') || msg.includes('Bluetooth adapter not available')) {
+        showToast('Enable Bluetooth and Location Services on your phone', true);
+      } else if (msg.includes('SecurityError')) {
+        showToast('Web Bluetooth requires HTTPS or localhost', true);
+      } else {
+        showToast(`BLE Error: ${msg}`, true);
+      }
+    }
+
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
