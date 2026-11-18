@@ -3,11 +3,7 @@ const ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './assets/favicon-32.png',
-  './assets/icon-192.png',
-  './assets/icon-512.png',
-  './assets/icon-maskable-512.png',
-  './assets/apple-touch-icon.png',
+  './icon.png',
 ];
 
 self.addEventListener('install', (event) => {
