@@ -41,9 +41,6 @@ Web Bluetooth requires:
 - Location services enabled (Android requirement for BLE scanning)
 - Secure context (HTTPS or localhost)
 
-## PWABuilder
-
-The project includes `manifest.json` and `sw.js` for PWABuilder packaging. Point PWABuilder at the project root; `index.html` is the entry point.
 
 ## Protocol reference
 
