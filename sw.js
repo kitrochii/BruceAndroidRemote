@@ -1,16 +1,21 @@
-const CACHE_NAME = 'bruceble-v1';
+const CACHE_NAME = 'bruceremote-v1';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './assets/favicon-32.png',
   './assets/icon-192.png',
-  './assets/icon-512.png'
+  './assets/icon-512.png',
+  './assets/icon-maskable-512.png',
+  './assets/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS).catch(() => {}))
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.addAll(ASSETS).catch(() => {})
+    )
   );
 });
 

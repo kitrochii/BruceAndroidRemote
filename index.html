@@ -1,34 +1,43 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#0b0d12">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <title>Bruce Remote — T-Embed CC1101</title>
+  <meta name="description" content="Web Bluetooth remote and screen mirror for LilyGO T-Embed CC1101 running Bruce firmware.">
+  <meta name="theme-color" content="#08090d">
+  <meta name="color-scheme" content="dark">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="description" content="Unofficial Android BLE Remote & Screen Mirror for Bruce Firmware">
-  <title>BruceBLE</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
-  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <meta name="apple-mobile-web-app-title" content="Bruce Remote">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/icon-192.png">
+  <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
 
   <style>
     :root {
-      --bg-main: #0b0d12;
-      --bg-panel: #131720;
-      --bg-elevated: #1c2230;
-      --accent: #a855f7;
-      --accent-glow: rgba(168, 85, 247, 0.35);
-      --accent-active: #c084fc;
-      --success: #22c55e;
-      --warning: #eab308;
-      --danger: #ef4444;
-      --text-main: #f3f4f6;
-      --text-muted: #9ca3af;
-      --border: #262f40;
+      --bg: #07080c;
+      --bg-2: #0b0d13;
+      --panel: #10131b;
+      --panel-2: #161a24;
+      --line: #262d3d;
+      --text: #eef1f7;
+      --muted: #96a0b5;
+      --muted-2: #6f7a90;
+      --accent: #b06cff;
+      --accent-2: #7c3aed;
+      --accent-soft: rgba(176, 108, 255, .14);
+      --accent-glow: rgba(176, 108, 255, .38);
+      --ok: #3ddc97;
+      --warn: #fbbf24;
+      --bad: #fb7185;
+      --radius: 16px;
+      --screen-aspect: 320 / 170;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
-
     * {
       box-sizing: border-box;
       margin: 0;
@@ -38,523 +47,196 @@
       -webkit-touch-callout: none;
       -webkit-tap-highlight-color: transparent;
     }
-
     html, body {
       width: 100%;
       height: 100%;
-      background-color: var(--bg-main);
-      color: var(--text-main);
+      background: var(--bg);
+      color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       overflow: hidden;
       display: flex;
       flex-direction: column;
     }
-
     header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 14px;
-      background: var(--bg-panel);
-      border-bottom: 1px solid var(--border);
+      padding: max(8px, var(--safe-top)) 14px 10px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
       flex-shrink: 0;
       z-index: 10;
     }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
+    .brand { display: flex; align-items: center; gap: 10px; }
     .status-dot {
-      width: 11px;
-      height: 11px;
-      border-radius: 50%;
-      background: var(--danger);
-      box-shadow: 0 0 8px var(--danger);
-      transition: all 0.3s ease;
+      width: 11px; height: 11px; border-radius: 50%; background: var(--bad);
+      box-shadow: 0 0 8px var(--bad); transition: all .3s ease;
     }
-    .status-dot.connecting {
-      background: var(--warning);
-      box-shadow: 0 0 10px var(--warning);
-      animation: pulse 1s infinite alternate;
-    }
-    .status-dot.connected {
-      background: var(--success);
-      box-shadow: 0 0 10px var(--success);
-    }
-
-    @keyframes pulse {
-      from { opacity: 0.4; transform: scale(0.9); }
-      to { opacity: 1; transform: scale(1.15); }
-    }
-
-    .brand-info {
-      display: flex;
-      flex-direction: column;
-    }
+    .status-dot.connecting { background: var(--warn); box-shadow: 0 0 10px var(--warn); animation: pulse 1s infinite alternate; }
+    .status-dot.connected { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+    @keyframes pulse { from { opacity: .4; transform: scale(.9); } to { opacity: 1; transform: scale(1.15); } }
+    .brand-info { display: flex; flex-direction: column; }
     .brand-title {
-      font-size: 15px;
-      font-weight: 700;
-      letter-spacing: 0.4px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      font-size: 15px; font-weight: 700; letter-spacing: .4px;
+      display: flex; align-items: center; gap: 6px;
     }
     .badge {
-      font-size: 10px;
-      padding: 1px 6px;
-      border-radius: 6px;
-      background: var(--bg-elevated);
-      color: var(--accent-active);
-      border: 1px solid var(--border);
-      font-weight: 600;
+      font-size: 10px; padding: 1px 6px; border-radius: 6px; background: var(--panel-2);
+      color: #c084fc; border: 1px solid var(--line); font-weight: 600; display: none;
     }
-    .status-sub {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
+    .status-sub { font-size: 11px; color: var(--muted); }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
     .btn-top {
-      background: var(--bg-elevated);
-      color: var(--text-main);
-      border: 1px solid var(--border);
-      padding: 7px 12px;
-      border-radius: 10px;
-      font-size: 12px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      cursor: pointer;
-      transition: transform 0.1s, background 0.2s, border-color 0.2s;
+      background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+      padding: 7px 12px; border-radius: 10px; font-size: 12px; font-weight: 600;
+      display: flex; align-items: center; gap: 5px; cursor: pointer;
+      transition: transform .1s, background .2s, border-color .2s;
     }
-    .btn-top:active {
-      transform: scale(0.95);
-    }
-    .btn-top.primary {
-      background: var(--accent);
-      border-color: var(--accent-active);
-      box-shadow: 0 0 12px var(--accent-glow);
-    }
-    .btn-top.danger {
-      background: rgba(239, 68, 68, 0.18);
-      border-color: var(--danger);
-      color: #fca5a5;
-    }
-    .btn-icon {
-      padding: 7px 9px;
-    }
+    .btn-top:active { transform: scale(.95); }
+    .btn-top.primary { background: var(--accent); border-color: var(--accent-2); box-shadow: 0 0 12px var(--accent-glow); color: #031018; }
+    .btn-top.danger { background: rgba(251, 113, 133, .18); border-color: var(--bad); color: #fca5a5; }
+    .btn-icon { padding: 7px 9px; }
 
-    .viewport-section {
-      padding: 10px 12px 6px;
-      flex-shrink: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-    }
-
+    .viewport-section { padding: 10px 12px 6px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; }
     .screen-bezel {
-      width: 100%;
-      max-width: 560px;
-      aspect-ratio: 320 / 170;
-      background: #050608;
-      border: 2px solid #2b3548;
-      border-radius: 14px;
-      padding: 6px;
-      position: relative;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.65), inset 0 0 14px rgba(168, 85, 247, 0.12);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      width: 100%; max-width: 560px; aspect-ratio: var(--screen-aspect);
+      background: #050608; border: 2px solid #2b3548; border-radius: 14px; padding: 6px;
+      position: relative; box-shadow: 0 8px 25px rgba(0,0,0,.65), inset 0 0 14px rgba(176,108,255,.12);
+      display: flex; align-items: center; justify-content: center;
     }
-
-    .screen-bezel.active-stream {
-      border-color: var(--accent);
-      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.7), 0 0 15px var(--accent-glow);
-    }
-
+    .screen-bezel.active-stream { border-color: var(--accent); box-shadow: 0 8px 28px rgba(0,0,0,.7), 0 0 15px var(--accent-glow); }
     canvas#bruceCanvas {
-      width: 100%;
-      height: 100%;
-      background: #000000;
-      border-radius: 8px;
-      image-rendering: pixelated;
-      image-rendering: crisp-edges;
-      display: block;
+      width: 100%; height: 100%; background: #000; border-radius: 8px;
+      image-rendering: pixelated; image-rendering: crisp-edges; display: block;
     }
-
     .screen-hud {
-      position: absolute;
-      top: 12px;
-      left: 14px;
-      right: 14px;
-      display: flex;
-      justify-content: space-between;
-      pointer-events: none;
-      font-size: 10px;
-      font-family: monospace;
-      color: rgba(255, 255, 255, 0.55);
-      text-shadow: 0 1px 2px #000;
+      position: absolute; top: 12px; left: 14px; right: 14px;
+      display: flex; justify-content: space-between; pointer-events: none;
+      font-size: 10px; font-family: monospace; color: rgba(255,255,255,.55); text-shadow: 0 1px 2px #000;
     }
-
     .screen-toolbar {
-      width: 100%;
-      max-width: 560px;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
+      width: 100%; max-width: 560px; display: grid;
+      grid-template-columns: repeat(4, 1fr); gap: 6px;
     }
-
     .tool-btn {
-      background: var(--bg-panel);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      padding: 8px 6px;
-      border-radius: 10px;
-      font-size: 11px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      cursor: pointer;
-      transition: all 0.12s ease;
+      background: var(--panel); border: 1px solid var(--line); color: var(--text);
+      padding: 8px 6px; border-radius: 10px; font-size: 11px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      cursor: pointer; transition: all .12s ease;
     }
-    .tool-btn:active {
-      transform: scale(0.95);
-      background: var(--bg-elevated);
-      border-color: var(--accent);
-    }
-    .tool-btn.highlight {
-      border-color: rgba(168, 85, 247, 0.5);
-      color: var(--accent-active);
-    }
+    .tool-btn:active { transform: scale(.95); background: var(--panel-2); border-color: var(--accent); }
+    .tool-btn.highlight { border-color: rgba(176,108,255,.5); color: #c084fc; }
 
     .workspace {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      padding: 4px 12px 10px;
-      max-width: 560px;
-      width: 100%;
-      margin: 0 auto;
+      flex: 1; display: flex; flex-direction: column; overflow: hidden;
+      padding: 4px 12px 10px; max-width: 560px; width: 100%; margin: 0 auto;
     }
-
     .tabs {
-      display: flex;
-      background: var(--bg-panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 3px;
-      margin-bottom: 8px;
-      flex-shrink: 0;
+      display: flex; background: var(--panel); border: 1px solid var(--line);
+      border-radius: 12px; padding: 3px; margin-bottom: 8px; flex-shrink: 0;
     }
-
     .tab-btn {
-      flex: 1;
-      text-align: center;
-      padding: 7px 0;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-muted);
-      background: transparent;
-      border: none;
-      border-radius: 9px;
-      cursor: pointer;
-      transition: all 0.2s;
+      flex: 1; text-align: center; padding: 7px 0; font-size: 12px; font-weight: 600;
+      color: var(--muted); background: transparent; border: none; border-radius: 9px;
+      cursor: pointer; transition: all .2s;
     }
-    .tab-btn.active {
-      background: var(--bg-elevated);
-      color: var(--text-main);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    }
-
-    .tab-pane {
-      display: none;
-      flex: 1;
-      overflow-y: auto;
-      flex-direction: column;
-    }
-    .tab-pane.active {
-      display: flex;
-    }
+    .tab-btn.active { background: var(--panel-2); color: var(--text); box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+    .tab-pane { display: none; flex: 1; overflow-y: auto; flex-direction: column; }
+    .tab-pane.active { display: flex; }
 
     .controller-layout {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-around;
-      align-items: center;
-      padding: 4px 0;
+      flex: 1; display: flex; flex-direction: column; justify-content: space-around;
+      align-items: center; padding: 4px 0;
     }
-
     .dpad-wrapper {
-      position: relative;
-      width: min(56vw, 230px);
-      height: min(56vw, 230px);
-      border-radius: 50%;
-      background: radial-gradient(circle at center, #1e2536 0%, #111520 75%, #0c0f17 100%);
-      border: 2px solid #2b3548;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.65), inset 0 2px 6px rgba(255,255,255,0.05);
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      grid-template-rows: 1fr 1fr 1fr;
-      padding: 8px;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      position: relative; width: min(56vw, 230px); height: min(56vw, 230px);
+      border-radius: 50%; background: radial-gradient(circle at center, #1e2536 0%, #111520 75%, #0c0f17 100%);
+      border: 2px solid #2b3548; box-shadow: 0 10px 30px rgba(0,0,0,.65), inset 0 2px 6px rgba(255,255,255,.05);
+      display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr;
+      padding: 8px; transition: border-color .2s, box-shadow .2s;
     }
-
-    .dpad-wrapper.long-press-charge {
-      border-color: var(--warning);
-      box-shadow: 0 0 22px rgba(234, 179, 8, 0.45);
-    }
-    .dpad-wrapper.long-press-fired {
-      border-color: var(--success);
-      box-shadow: 0 0 26px rgba(34, 197, 94, 0.65);
-    }
-
+    .dpad-wrapper.long-press-charge { border-color: var(--warn); box-shadow: 0 0 22px rgba(251,191,36,.45); }
+    .dpad-wrapper.long-press-fired { border-color: var(--ok); box-shadow: 0 0 26px rgba(61,220,151,.65); }
     .pad-btn {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.07);
-      color: var(--text-main);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: background 0.1s, transform 0.08s, border-color 0.15s, box-shadow 0.15s;
-      font-weight: 700;
-      font-size: 13px;
-      gap: 2px;
-      touch-action: none;
+      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); color: var(--text);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; transition: background .1s, transform .08s, border-color .15s, box-shadow .15s;
+      font-weight: 700; font-size: 13px; gap: 2px; touch-action: none;
     }
-
-    .pad-btn span.sub-label {
-      font-size: 9px;
-      font-weight: 500;
-      color: var(--text-muted);
-      letter-spacing: 0.3px;
-    }
-
-    .pad-btn.pressed {
-      background: var(--accent);
-      border-color: var(--accent-active);
-      box-shadow: 0 0 16px var(--accent-glow);
-      transform: scale(0.93);
-      color: #fff;
-    }
-    .pad-btn.pressed span.sub-label {
-      color: rgba(255,255,255,0.85);
-    }
-
-    .pad-up {
-      grid-column: 2;
-      grid-row: 1;
-      border-radius: 18px 18px 8px 8px;
-    }
-    .pad-left {
-      grid-column: 1;
-      grid-row: 2;
-      border-radius: 18px 8px 8px 18px;
-    }
-    .pad-center {
-      grid-column: 2;
-      grid-row: 2;
-      border-radius: 50%;
-      background: linear-gradient(145deg, #273046, #191f2e);
-      border: 2px solid #3b4764;
-      margin: 4px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-      font-size: 14px;
-    }
-    .pad-right {
-      grid-column: 3;
-      grid-row: 2;
-      border-radius: 8px 18px 18px 8px;
-    }
-    .pad-down {
-      grid-column: 2;
-      grid-row: 3;
-      border-radius: 8px 8px 18px 18px;
-    }
+    .pad-btn span.sub-label { font-size: 9px; font-weight: 500; color: var(--muted); letter-spacing: .3px; }
+    .pad-btn.pressed { background: var(--accent); border-color: var(--accent-2); box-shadow: 0 0 16px var(--accent-glow); transform: scale(.93); color: #fff; }
+    .pad-btn.pressed span.sub-label { color: rgba(255,255,255,.85); }
+    .pad-up { grid-column: 2; grid-row: 1; border-radius: 18px 18px 8px 8px; }
+    .pad-left { grid-column: 1; grid-row: 2; border-radius: 18px 8px 8px 18px; }
+    .pad-center { grid-column: 2; grid-row: 2; border-radius: 50%; background: linear-gradient(145deg,#273046,#191f2e); border: 2px solid #3b4764; margin: 4px; box-shadow: 0 4px 10px rgba(0,0,0,.5); font-size: 14px; }
+    .pad-right { grid-column: 3; grid-row: 2; border-radius: 8px 18px 18px 8px; }
+    .pad-down { grid-column: 2; grid-row: 3; border-radius: 8px 8px 18px 18px; }
 
     .aux-controls {
-      width: 100%;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-top: 6px;
+      width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 6px;
     }
-
     .aux-btn {
-      background: var(--bg-panel);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 12px 8px;
-      color: var(--text-main);
-      font-weight: 700;
-      font-size: 13px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 3px;
-      cursor: pointer;
-      touch-action: none;
-      transition: all 0.1s;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+      padding: 12px 8px; color: var(--text); font-weight: 700; font-size: 13px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      cursor: pointer; touch-action: none; transition: all .1s;
     }
-    .aux-btn small {
-      font-size: 10px;
-      color: var(--text-muted);
-      font-weight: 500;
-    }
-    .aux-btn.pressed {
-      background: var(--accent);
-      border-color: var(--accent-active);
-      transform: scale(0.95);
-      box-shadow: 0 0 14px var(--accent-glow);
-    }
+    .aux-btn small { font-size: 10px; color: var(--muted); font-weight: 500; }
+    .aux-btn.pressed { background: var(--accent); border-color: var(--accent-2); transform: scale(.95); box-shadow: 0 0 14px var(--accent-glow); }
 
     .terminal-box {
-      flex: 1;
-      background: #06080c;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px;
-      font-family: "JetBrains Mono", Consolas, monospace;
-      font-size: 11px;
-      line-height: 1.45;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-all;
-      color: #d1d5db;
-      margin-bottom: 8px;
+      flex: 1; background: #06080c; border: 1px solid var(--line); border-radius: 12px;
+      padding: 10px; font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px;
+      line-height: 1.45; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+      color: #d1d5db; margin-bottom: 8px;
     }
     .log-tx { color: #c084fc; }
     .log-rx { color: #4ade80; }
     .log-sys { color: #60a5fa; }
     .log-err { color: #f87171; }
-
-    .cli-shortcuts {
-      display: flex;
-      gap: 6px;
-      overflow-x: auto;
-      padding-bottom: 6px;
-      flex-shrink: 0;
-    }
+    .cli-shortcuts { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; flex-shrink: 0; }
     .chip {
-      background: var(--bg-panel);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      padding: 5px 10px;
-      border-radius: 8px;
-      font-size: 11px;
-      font-family: monospace;
-      white-space: nowrap;
-      cursor: pointer;
+      background: var(--panel); border: 1px solid var(--line); color: var(--text);
+      padding: 5px 10px; border-radius: 8px; font-size: 11px; font-family: monospace;
+      white-space: nowrap; cursor: pointer;
     }
-    .chip:active {
-      background: var(--accent);
-    }
-
-    .cli-input-row {
-      display: flex;
-      gap: 6px;
-      flex-shrink: 0;
-    }
+    .chip:active { background: var(--accent); }
+    .cli-input-row { display: flex; gap: 6px; flex-shrink: 0; }
     .cli-input {
-      flex: 1;
-      background: var(--bg-panel);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 9px 12px;
-      color: var(--text-main);
-      font-family: monospace;
-      font-size: 13px;
-      outline: none;
+      flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+      padding: 9px 12px; color: var(--text); font-family: monospace; font-size: 13px; outline: none;
     }
-    .cli-input:focus {
-      border-color: var(--accent);
-    }
+    .cli-input:focus { border-color: var(--accent); }
 
-    .settings-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      padding-bottom: 12px;
-    }
-    .card {
-      background: var(--bg-panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-    }
-    .card h3 {
-      font-size: 13px;
-      margin-bottom: 6px;
-      color: var(--accent-active);
-    }
-    .card p {
-      font-size: 11px;
-      color: var(--text-muted);
-      line-height: 1.4;
-      margin-bottom: 8px;
-    }
+    .settings-list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+    .card h3 { font-size: 13px; margin-bottom: 6px; color: #c084fc; }
+    .card p { font-size: 11px; color: var(--muted); line-height: 1.4; margin-bottom: 8px; }
     .setting-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 6px 0;
-      border-top: 1px solid rgba(255,255,255,0.05);
-      font-size: 12px;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 0; border-top: 1px solid rgba(255,255,255,.05); font-size: 12px;
     }
     select, input[type="number"] {
-      background: var(--bg-elevated);
-      color: var(--text-main);
-      border: 1px solid var(--border);
-      padding: 5px 8px;
-      border-radius: 8px;
-      font-size: 12px;
+      background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+      padding: 5px 8px; border-radius: 8px; font-size: 12px;
     }
 
     #toast {
-      position: fixed;
-      bottom: 18px;
-      left: 50%;
-      transform: translateX(-50%) translateY(120%);
-      background: #1e1b2e;
-      border: 1px solid var(--accent);
-      color: var(--text-main);
-      padding: 10px 16px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 500;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.8);
-      z-index: 999;
-      max-width: 92vw;
-      text-align: center;
-      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%) translateY(120%);
+      background: #1e1b2e; border: 1px solid var(--accent); color: var(--text);
+      padding: 10px 16px; border-radius: 12px; font-size: 12px; font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,.8); z-index: 999; max-width: 92vw; text-align: center;
+      transition: transform .28s cubic-bezier(.16,1,.3,1);
     }
-    #toast.show {
-      transform: translateX(-50%) translateY(0);
-    }
-    #toast.error {
-      background: #2c1215;
-      border-color: var(--danger);
-      color: #fecaca;
-    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast.error { background: #2c1215; border-color: var(--bad); color: #fecaca; }
+
+    .fullscreen-hint { position: absolute; top: 12px; right: 12px; opacity: .5; font-size: 11px; pointer-events: none; }
   </style>
 </head>
 <body>
+
+  <div class="fullscreen-hint" id="fsHint">Fullscreen</div>
 
   <header>
     <div class="brand">
@@ -562,22 +244,17 @@
       <div class="brand-info">
         <div class="brand-title">
           <span>BRUCE REMOTE</span>
-          <span id="batBadge" class="badge" style="display:none;">--%</span>
+          <span id="batBadge" class="badge">--%</span>
         </div>
-        <div id="statusText" class="status-sub">Disconnected • Enable BLE API in Config</div>
+        <div id="statusText" class="status-sub">Disconnected • Enable BLE API in Config → Advanced</div>
       </div>
     </div>
-
     <div class="header-actions">
       <button id="btnConnect" class="btn-top primary" onclick="handleConnectionClick()">
         <span id="btnConnectLabel">Connect</span>
       </button>
-      <button id="btnReconnect" class="btn-top btn-icon" title="Reconnect" onclick="reconnectDevice()" style="display:none;">
-        ↻
-      </button>
-      <button class="btn-top btn-icon" title="Fullscreen" onclick="toggleFullscreen()">
-        ⛶
-      </button>
+      <button id="btnReconnect" class="btn-top btn-icon" title="Reconnect" onclick="reconnectDevice()" style="display:none;">↻</button>
+      <button class="btn-top btn-icon" title="Fullscreen" onclick="toggleFullscreen()">⛶</button>
     </div>
   </header>
 
@@ -589,20 +266,11 @@
         <span id="hudRes">320×170 RGB565</span>
       </div>
     </div>
-
     <div class="screen-toolbar">
-      <button class="tool-btn highlight" onclick="requestRepaint()">
-        ↻ Repaint
-      </button>
-      <button class="tool-btn" onclick="toggleStream()">
-        <span id="streamStateLabel">▶ Stream ON</span>
-      </button>
-      <button class="tool-btn" onclick="saveScreenshot()">
-        📷 Capture
-      </button>
-      <button class="tool-btn" onclick="clearMirrorCanvas()">
-        🧹 Clear
-      </button>
+      <button class="tool-btn highlight" onclick="requestRepaint()">Repaint</button>
+      <button class="tool-btn" onclick="toggleStream()"><span id="streamStateLabel">Stream</span></button>
+      <button class="tool-btn" onclick="saveScreenshot()">Capture</button>
+      <button class="tool-btn" onclick="clearMirrorCanvas()">Clear</button>
     </div>
   </section>
 
@@ -610,47 +278,22 @@
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('pad', this)">Controls</button>
       <button class="tab-btn" onclick="switchTab('cli', this)">Terminal (<span id="rxCount">0</span>)</button>
-      <button class="tab-btn" onclick="switchTab('cfg', this)">Config</button>
+      <button class="tab-btn" onclick="switchTab('cfg', this)">Settings</button>
     </div>
 
     <div id="tab-pad" class="tab-pane active">
       <div class="controller-layout">
         <div id="dpad" class="dpad-wrapper">
-          <button class="pad-btn pad-up" data-action="up">
-            ▲
-            <span class="sub-label">PREV / UP</span>
-          </button>
-          <button class="pad-btn pad-left" data-action="left">
-            ◀
-            <span class="sub-label">LEFT</span>
-          </button>
-          <button class="pad-btn pad-center" data-action="select">
-            OK
-            <span class="sub-label">HOLD = LONG</span>
-          </button>
-          <button class="pad-btn pad-right" data-action="right">
-            ▶
-            <span class="sub-label">RIGHT</span>
-          </button>
-          <button class="pad-btn pad-down" data-action="down">
-            ▼
-            <span class="sub-label">NEXT / DOWN</span>
-          </button>
+          <button class="pad-btn pad-up" data-action="up">Up<span class="sub-label">PREV / UP</span></button>
+          <button class="pad-btn pad-left" data-action="prev">Left<span class="sub-label">LEFT</span></button>
+          <button class="pad-btn pad-center" data-action="sel">Select<span class="sub-label">HOLD = LONG</span></button>
+          <button class="pad-btn pad-right" data-action="next">Right<span class="sub-label">RIGHT</span></button>
+          <button class="pad-btn pad-down" data-action="down">Down<span class="sub-label">NEXT / DOWN</span></button>
         </div>
-
         <div class="aux-controls">
-          <button class="aux-btn" data-action="back">
-            <span>↩ BACK / ESC</span>
-            <small>Return / Exit</small>
-          </button>
-          <button class="aux-btn" onclick="triggerLongPressManual()">
-            <span>⏱ LONG PRESS</span>
-            <small>Hold OK</small>
-          </button>
-          <button class="aux-btn" onclick="requestRepaint()">
-            <span>🔄 REPAINT</span>
-            <small>Refresh Frame</small>
-          </button>
+          <button class="aux-btn" data-action="esc">Back<span class="sub-label">BACK / ESC</span></button>
+          <button class="aux-btn" onclick="triggerLongPressManual()">Long press<span class="sub-label">Hold Select</span></button>
+          <button class="aux-btn" onclick="requestRepaint()">Repaint<span class="sub-label">Refresh frame</span></button>
         </div>
       </div>
     </div>
@@ -660,15 +303,13 @@
       <div class="cli-shortcuts">
         <button class="chip" onclick="sendRawCommand('info')">info</button>
         <button class="chip" onclick="sendRawCommand('free')">free</button>
-        <button class="chip" onclick="sendRawCommand('storage free')">storage free</button>
+        <button class="chip" onclick="sendRawCommand('storage free sd')">storage free sd</button>
         <button class="chip" onclick="sendRawCommand('uptime')">uptime</button>
         <button class="chip" onclick="sendRawCommand('screen on')">screen on</button>
-        <button class="chip" onclick="sendRawCommand('screen log on')">screen log on</button>
-        <button class="chip" onclick="sendRawCommand('settings')">settings</button>
         <button class="chip" onclick="sendRawCommand('help')">help</button>
       </div>
       <div class="cli-input-row">
-        <input id="cliInput" class="cli-input" type="text" placeholder="Bruce CLI command (e.g. info, subghz...)" onkeydown="if(event.key==='Enter') sendFromInput()">
+        <input id="cliInput" class="cli-input" type="text" placeholder="Bruce CLI command (info, free, subghz...)" onkeydown="if(event.key==='Enter') sendFromInput()">
         <button class="btn-top primary" onclick="sendFromInput()">Send</button>
       </div>
     </div>
@@ -676,33 +317,27 @@
     <div id="tab-cfg" class="tab-pane">
       <div class="settings-list">
         <div class="card">
-          <h3>BLE & Navigation Options</h3>
-          <p>Bruce firmware truncates its BLE advertisement name to <code>Bruc</code> with Scan Response disabled. Default scanner filter matches the native client.</p>
-          <div class="setting-row">
-            <span>BLE Scanner Filter</span>
+          <h3>BLE & Navigation</h3>
+          <p>Bruce advertises as <code>Bruc</code> (truncated name). Main service is NUS. If not found, use "All devices".</p>
+          <div class="setting-row"><span>BLE filter</span>
             <select id="scanModeSelect">
-              <option value="prefix" selected>Prefix "Bruc" (Default)</option>
-              <option value="all">All BLE Devices (Fallback)</option>
+              <option value="prefix" selected>Prefix "Bruc" (default)</option>
+              <option value="all">All BLE devices (fallback)</option>
             </select>
           </div>
-          <div class="setting-row">
-            <span>Navigation Command Profile</span>
+          <div class="setting-row"><span>Navigation profile</span>
             <select id="navProfileSelect">
-              <option value="dual" selected>Bruce CLI (Default)</option>
-              <option value="screen">screen up / down / select / esc</option>
-              <option value="nav">nav up / down / select / back</option>
-              <option value="raw">Direct (up / down / select / esc)</option>
+              <option value="bruce" selected>Bruce nav (default)</option>
+              <option value="raw">Direct (up/down/sel/esc)</option>
             </select>
           </div>
-          <div class="setting-row">
-            <span>Long Press Threshold (ms)</span>
-            <input id="longPressMs" type="number" value="450" min="250" max="1500" step="50" style="width:80px;">
+          <div class="setting-row"><span>Long press threshold (ms)</span>
+            <input id="longPressMs" type="number" value="600" min="250" max="1500" step="50" style="width:80px;">
           </div>
         </div>
-
         <div class="card">
-          <h3>Device Diagnostics</h3>
-          <p id="deviceInfoSummary">Device disconnected. <code>info</code> and <code>free</code> probes run automatically on connection.</p>
+          <h3>Device diagnostics</h3>
+          <p id="deviceInfoSummary">Device disconnected. <code>info</code> and <code>free</code> requested automatically on connect.</p>
         </div>
       </div>
     </div>
@@ -711,165 +346,187 @@
   <div id="toast"></div>
 
   <script>
-    const BRUCE_BLE = {
-      SERIAL_SERVICE_UUID: '4371ec0b-3d43-49f9-b731-7c72a4a7bb91',
-      SERIAL_CHAR_UUID:    'd555ed97-bf2a-4f46-b3eb-d1fcdd7325e9',
-      NUS_SERVICE_UUID:    '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
-      NUS_RX_CHAR_UUID:    '6e400002-b5a3-f393-e0a9-e50e24dcca9e',
-      NUS_TX_CHAR_UUID:    '6e400003-b5a3-f393-e0a9-e50e24dcca9e',
-      BATTERY_SERVICE_UUID: 0x180f,
-      BATTERY_CHAR_UUID:    0x2a19
+    /* Bruce BLE Remote — protocol matches BruceDevices/App-IOS + firmware:
+     * NUS service 6e400001-b5a3-f393-e0a9-e50e24dcca9e
+     *   RX (write):   6e400002-b5a3-f393-e0a9-e50e24dcca9e
+     *   TX (notify):  6e400003-b5a3-f393-e0a9-e50e24dcca9e
+     * Custom Bruce service (fallback):
+     *   4371ec0b-3d43-49f9-b731-7c72a4a7bb91 / char d555ed97-bf2a-4f46-b3eb-d1fcdd7325e9
+     * Battery: 0x180F / 0x2a19
+     * Commands end with \r\n
+     * nav <dir> [duration] — button press
+     * display start/stop — binary TFT stream (0xAA packets)
+     * repaint = nav next -> nav prev
+     */
+
+    const BRUCE = {
+      NUS_SERVICE:    '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+      NUS_RX_CHAR:    '6e400002-b5a3-f393-e0a9-e50e24dcca9e',
+      NUS_TX_CHAR:    '6e400003-b5a3-f393-e0a9-e50e24dcca9e',
+      SERIAL_SERVICE: '4371ec0b-3d43-49f9-b731-7c72a4a7bb91',
+      SERIAL_CHAR:    'd555ed97-bf2a-4f46-b3eb-d1fcdd7325e9',
+      BAT_SERVICE:    0x180f,
+      BAT_CHAR:       0x2a19,
+      NAME_PREFIX:    'bruc',
     };
 
-    const SCREEN_WIDTH = 320;
-    const SCREEN_HEIGHT = 170;
+    const SCREEN_W = 320;
+    const SCREEN_H = 170;
 
-    let bleDevice = null;
-    let gattServer = null;
-    let writeCharacteristic = null;
-    let notifyCharacteristic = null;
+    let bleDevice   = null;
+    let gattServer  = null;
+    let writeChar   = null;
+    let notifyChar  = null;
     let isConnected = false;
-    let isStreaming = true;
+    let isStreaming = false;
 
-    const txQueue = [];
-    let isWriting = false;
-    const BLE_CHUNK_SIZE = 180;
+    const txQueue      = [];
+    let isWriting      = false;
+    const BLE_CHUNK    = 200;
 
-    let rxLineBuffer = '';
-    let rxBinaryBuffer = new Uint8Array(0);
-    let rxPacketsCount = 0;
-    let drawCallsCount = 0;
-    let currentFrameCalls = [];
+    let rxText = '';
+    let rxPackets = 0;
+    let drawCalls = 0;
 
-    const canvas = document.getElementById('bruceCanvas');
-    const ctx = canvas.getContext('2d', { alpha: false });
+    let rxBin = new Uint8Array(0);
+    let pendingOps = [];
+    let pendingClearsFrame = false;
+    let pendingSize = null;
+    let flushTimer = null;
+    const COALESCE_MS = 40;
 
-    function drawStandbyScreen(message = 'READY TO PAIR OVER BLE') {
-      ctx.fillStyle = '#07090e';
-      ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    const canvas   = document.getElementById('bruceCanvas');
+    const ctx      = canvas.getContext('2d', { alpha: false });
+    canvas.width   = SCREEN_W;
+    canvas.height  = SCREEN_H;
 
-      ctx.strokeStyle = '#a855f7';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(4, 4, SCREEN_WIDTH - 8, SCREEN_HEIGHT - 8);
+    function log(msg, cls = '') {
+      const box = document.getElementById('terminalLog');
+      if (!box) return;
+      const line = document.createElement('div');
+      if (cls) line.className = cls;
+      const t = new Date().toLocaleTimeString('en-US', { hour12: false });
+      line.textContent = `[${t}] ${msg}`;
+      box.appendChild(line);
+      if (box.childNodes.length > 300) box.removeChild(box.firstChild);
+      box.scrollTop = box.scrollHeight;
+    }
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      if (!t) return;
+      t.textContent = msg;
+      t.className = isError ? 'show error' : 'show';
+      clearTimeout(window._toastTid);
+      window._toastTid = setTimeout(() => { t.className = ''; }, 3500);
+    }
+    function vibrate(pattern = 20) {
+      if (navigator.vibrate) try { navigator.vibrate(pattern); } catch (_) {}
+    }
+    function setStatus(state, text) {
+      const dot = document.getElementById('statusDot');
+      const st  = document.getElementById('statusText');
+      const btn = document.getElementById('btnConnect');
+      const lbl = document.getElementById('btnConnectLabel');
+      const bezel = document.getElementById('screenBezel');
 
-      ctx.fillStyle = '#181c28';
-      ctx.fillRect(6, 6, SCREEN_WIDTH - 12, 22);
+      dot.className = 'status-dot ' + (state === 'connected' ? 'connected' : state === 'connecting' ? 'connecting' : '');
+      st.textContent = text;
 
-      ctx.fillStyle = '#c084fc';
-      ctx.font = 'bold 12px monospace';
-      ctx.textBaseline = 'top';
-      ctx.fillText('BRUCE REMOTE // LILYGO T-EMBED', 12, 11);
-
-      ctx.fillStyle = '#f3f4f6';
-      ctx.font = 'bold 15px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('BRUCE BLE MIRROR (320×170)', SCREEN_WIDTH / 2, 62);
-
-      ctx.fillStyle = '#9ca3af';
-      ctx.font = '11px monospace';
-      ctx.fillText(message, SCREEN_WIDTH / 2, 88);
-
-      ctx.fillStyle = '#6b7280';
-      ctx.font = '10px monospace';
-      ctx.fillText('On device: Config -> Advanced -> Toggle BLE API', SCREEN_WIDTH / 2, 116);
-      ctx.textAlign = 'left';
+      if (state === 'connected') {
+        btn.className = 'btn-top danger'; lbl.textContent = 'Disconnect';
+        document.getElementById('btnReconnect').style.display = 'inline-flex';
+        bezel.classList.add('active-stream');
+      } else if (state === 'connecting') {
+        btn.className = 'btn-top'; lbl.textContent = 'Connecting…';
+      } else {
+        btn.className = 'btn-top primary'; lbl.textContent = 'Connect';
+        document.getElementById('btnReconnect').style.display = 'none';
+        bezel.classList.remove('active-stream');
+      }
+    }
+    function updateHud() {
+      document.getElementById('hudPkts').textContent = `PKTS: ${rxPackets} | CALLS: ${drawCalls}`;
+      document.getElementById('rxCount').textContent = rxPackets;
     }
 
-    drawStandbyScreen();
-
     async function handleConnectionClick() {
-      if (isConnected) {
-        disconnectDevice();
-      } else {
-        await connectDevice();
-      }
+      if (isConnected) { disconnectDevice(); return; }
+      await connectDevice();
     }
 
     async function connectDevice() {
       if (!navigator.bluetooth) {
         showToast('Web Bluetooth is not supported in this browser.', true);
-        logTerminal('ERR: navigator.bluetooth is not available.', 'log-err');
+        log('ERR: navigator.bluetooth is not available', 'log-err');
         return;
       }
-
       try {
-        setConnectionStatus('connecting', 'Scanning for Bruce (BLE)...');
+        setStatus('connecting', 'Scanning for Bruce (BLE)…');
         const scanMode = document.getElementById('scanModeSelect').value;
 
-        const optionalServices = [
-          BRUCE_BLE.SERIAL_SERVICE_UUID,
-          BRUCE_BLE.NUS_SERVICE_UUID,
-          BRUCE_BLE.BATTERY_SERVICE_UUID
-        ];
+        const optional = [BRUCE.NUS_SERVICE, BRUCE.SERIAL_SERVICE, BRUCE.BAT_SERVICE];
+        const filters  = scanMode === 'prefix'
+          ? [
+              { namePrefix: 'Bruce' },
+              { namePrefix: 'Bruc' },
+              { namePrefix: 'bruc' },
+              { services: [BRUCE.NUS_SERVICE] },
+              { services: [BRUCE.SERIAL_SERVICE] },
+            ]
+          : [];
+        const opts = scanMode === 'prefix'
+          ? { filters, optionalServices: optional }
+          : { acceptAllDevices: true, optionalServices: optional };
 
-        const requestOptions = scanMode === 'prefix'
-          ? {
-              filters: [
-                { namePrefix: 'Bruc' },
-                { namePrefix: 'bruc' },
-                { services: [BRUCE_BLE.SERIAL_SERVICE_UUID] },
-                { services: [BRUCE_BLE.NUS_SERVICE_UUID] }
-              ],
-              optionalServices
-            }
-          : {
-              acceptAllDevices: true,
-              optionalServices
-            };
-
-        logTerminal('Scanning for BLE devices...', 'log-sys');
-        bleDevice = await navigator.bluetooth.requestDevice(requestOptions);
+        log('Scanning BLE…', 'log-sys');
+        bleDevice = await navigator.bluetooth.requestDevice(opts);
 
         bleDevice.removeEventListener('gattserverdisconnected', onGattDisconnected);
         bleDevice.addEventListener('gattserverdisconnected', onGattDisconnected);
 
-        await establishGattLink();
-
+        await establishGatt();
       } catch (err) {
-        setConnectionStatus('disconnected', 'Disconnected');
+        setStatus('disconnected', 'Disconnected');
         handleBleError(err);
       }
     }
 
-    async function establishGattLink() {
+    async function establishGatt() {
       if (!bleDevice) return;
-      setConnectionStatus('connecting', `Connecting to ${bleDevice.name || 'Bruce'}...`);
-      logTerminal(`Connecting to GATT server on ${bleDevice.name || bleDevice.id}...`, 'log-sys');
+      setStatus('connecting', `Connecting to ${bleDevice.name || 'Bruce'}…`);
+      log(`GATT connect on ${bleDevice.name || bleDevice.id}…`, 'log-sys');
 
       gattServer = await bleDevice.gatt.connect();
 
-      let serviceFound = false;
+      let found = false;
       try {
-        const bruceService = await gattServer.getPrimaryService(BRUCE_BLE.SERIAL_SERVICE_UUID);
-        const serialChar = await bruceService.getCharacteristic(BRUCE_BLE.SERIAL_CHAR_UUID);
-        writeCharacteristic = serialChar;
-        notifyCharacteristic = serialChar;
-        serviceFound = true;
-        logTerminal('Attached to Bruce Serial Service (4371EC0B)', 'log-sys');
+        const svc = await gattServer.getPrimaryService(BRUCE.SERIAL_SERVICE);
+        const ch  = await svc.getCharacteristic(BRUCE.SERIAL_CHAR);
+        writeChar = ch; notifyChar = ch;
+        found = true;
+        log('Custom Bruce Serial Service attached', 'log-sys');
       } catch (_) {
         try {
-          const nusService = await gattServer.getPrimaryService(BRUCE_BLE.NUS_SERVICE_UUID);
-          writeCharacteristic = await nusService.getCharacteristic(BRUCE_BLE.NUS_RX_CHAR_UUID);
-          notifyCharacteristic = await nusService.getCharacteristic(BRUCE_BLE.NUS_TX_CHAR_UUID);
-          serviceFound = true;
-          logTerminal('Attached to Nordic UART Service (NUS Fallback)', 'log-sys');
-        } catch (innerErr) {
-          throw new Error('Neither Bruce Serial nor NUS service found. Verify BLE API is enabled on the device.');
+          const svc = await gattServer.getPrimaryService(BRUCE.NUS_SERVICE);
+          writeChar = await svc.getCharacteristic(BRUCE.NUS_RX_CHAR);
+          notifyChar = await svc.getCharacteristic(BRUCE.NUS_TX_CHAR);
+          found = true;
+          log('NUS Service attached (fallback)', 'log-sys');
+        } catch (e) {
+          throw new Error('Neither Bruce Serial nor NUS found. Enable BLE API on the device.');
         }
       }
 
-      if (serviceFound && notifyCharacteristic) {
-        await notifyCharacteristic.startNotifications();
-        notifyCharacteristic.removeEventListener('characteristicvaluechanged', onBleNotification);
-        notifyCharacteristic.addEventListener('characteristicvaluechanged', onBleNotification);
+      if (notifyChar) {
+        await notifyChar.startNotifications();
+        notifyChar.removeEventListener('characteristicvaluechanged', onBleNotify);
+        notifyChar.addEventListener('characteristicvaluechanged', onBleNotify);
       }
 
-      readBatteryLevel();
+      await readBattery();
 
       isConnected = true;
-      setConnectionStatus('connected', `${bleDevice.name || 'Bruce'} • Connected`);
-      document.getElementById('btnReconnect').style.display = 'inline-flex';
-      document.getElementById('screenBezel').classList.add('active-stream');
+      setStatus('connected', `${bleDevice.name || 'Bruce'} • Connected`);
       vibrate([30, 50, 30]);
       showToast(`Connected to ${bleDevice.name || 'Bruce'}`);
 
@@ -881,771 +538,423 @@
     }
 
     async function reconnectDevice() {
-      if (!bleDevice) {
-        await connectDevice();
-        return;
-      }
+      if (!bleDevice) { await connectDevice(); return; }
       try {
-        if (bleDevice.gatt.connected) {
-          bleDevice.gatt.disconnect();
-        }
-        await establishGattLink();
-      } catch (err) {
-        handleBleError(err);
-      }
+        if (bleDevice.gatt && bleDevice.gatt.connected) bleDevice.gatt.disconnect();
+        await establishGatt();
+      } catch (err) { handleBleError(err); }
     }
 
     function disconnectDevice() {
-      if (bleDevice && bleDevice.gatt.connected) {
-        bleDevice.gatt.disconnect();
-      } else {
-        onGattDisconnected();
-      }
+      if (bleDevice && bleDevice.gatt && bleDevice.gatt.connected) bleDevice.gatt.disconnect();
+      else onGattDisconnected();
     }
 
     function onGattDisconnected() {
       isConnected = false;
-      writeCharacteristic = null;
-      notifyCharacteristic = null;
-      setConnectionStatus('disconnected', 'Connection lost • Tap ↻ to reconnect');
-      document.getElementById('screenBezel').classList.remove('active-stream');
-      logTerminal('BLE link disconnected.', 'log-err');
+      isStreaming = false;
+      writeChar = null; notifyChar = null;
+      setStatus('disconnected', 'Connection lost • Tap ↻ to reconnect');
+      log('BLE link disconnected.', 'log-err');
       showToast('Device disconnected', true);
       vibrate(80);
+      clearMirrorCanvas();
     }
 
-    async function readBatteryLevel() {
+    async function readBattery() {
       try {
-        const batService = await gattServer.getPrimaryService(BRUCE_BLE.BATTERY_SERVICE_UUID);
-        const batChar = await batService.getCharacteristic(BRUCE_BLE.BATTERY_CHAR_UUID);
-        const val = await batChar.readValue();
+        const svc = await gattServer.getPrimaryService(BRUCE.BAT_SERVICE);
+        const ch  = await svc.getCharacteristic(BRUCE.BAT_CHAR);
+        const val = await ch.readValue();
         const pct = val.getUint8(0);
         const badge = document.getElementById('batBadge');
-        badge.textContent = `🔋 ${pct}%`;
+        badge.textContent = `Battery ${pct}%`;
         badge.style.display = 'inline-block';
       } catch (_) {}
     }
 
-    async function enqueueCommand(cmdString) {
-      if (!isConnected || !writeCharacteristic) {
+    function enqueueCommand(cmd) {
+      if (!isConnected || !writeChar) {
         showToast('Connect to a Bruce device over BLE first', true);
         return;
       }
-      const payload = cmdString.endsWith('\r\n') ? cmdString : cmdString + '\r\n';
+      const payload = cmd.endsWith('\r\n') ? cmd : cmd + '\r\n';
       txQueue.push(payload);
       processTxQueue();
     }
 
     async function processTxQueue() {
-      if (isWriting || txQueue.length === 0 || !writeCharacteristic) return;
+      if (isWriting || txQueue.length === 0 || !writeChar) return;
       isWriting = true;
-
-      const encoder = new TextEncoder();
-      while (txQueue.length > 0 && isConnected && writeCharacteristic) {
+      const enc = new TextEncoder();
+      while (txQueue.length > 0 && isConnected && writeChar) {
         const cmd = txQueue.shift();
-        logTerminal(`> ${cmd.trim()}`, 'log-tx');
-        const bytes = encoder.encode(cmd);
-
+        log(`> ${cmd.trim()}`, 'log-tx');
+        const bytes = enc.encode(cmd);
         try {
-          for (let offset = 0; offset < bytes.length; offset += BLE_CHUNK_SIZE) {
-            const chunk = bytes.slice(offset, offset + BLE_CHUNK_SIZE);
-            if (writeCharacteristic.properties.writeWithoutResponse) {
-              await writeCharacteristic.writeValueWithoutResponse(chunk);
+          for (let off = 0; off < bytes.length; off += BLE_CHUNK) {
+            const chunk = bytes.slice(off, off + BLE_CHUNK);
+            if (writeChar.properties.writeWithoutResponse) {
+              await writeChar.writeValueWithoutResponse(chunk);
             } else {
-              await writeCharacteristic.writeValue(chunk);
+              await writeChar.writeValue(chunk);
             }
           }
         } catch (err) {
-          logTerminal(`BLE write error: ${err.message}`, 'log-err');
+          log(`BLE write error: ${err.message}`, 'log-err');
           break;
         }
       }
-
       isWriting = false;
     }
 
-    function onBleNotification(event) {
+    function onBleNotify(event) {
       const value = event.target.value;
       const chunk = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
-      rxPacketsCount++;
+      rxPackets++;
       updateHud();
 
-      if (isBinaryFrameChunk(chunk)) {
-        handleBinaryScreenChunk(chunk);
-        return;
-      }
+      handleBinaryStream(chunk);
 
-      const decoder = new TextDecoder('utf-8', { fatal: false });
-      rxLineBuffer += decoder.decode(chunk, { stream: true });
+      const dec = new TextDecoder('utf-8', { fatal: false });
+      rxText += dec.decode(chunk, { stream: true });
+      if (rxText.length > 131072) rxText = rxText.slice(-65536);
 
-      if (rxLineBuffer.length > 65536) {
-        rxLineBuffer = rxLineBuffer.slice(-32768);
-      }
-
-      let newlineIdx;
-      while ((newlineIdx = rxLineBuffer.indexOf('\n')) !== -1) {
-        const rawLine = rxLineBuffer.slice(0, newlineIdx).replace(/\r$/, '');
-        rxLineBuffer = rxLineBuffer.slice(newlineIdx + 1);
-        processIncomingLine(rawLine);
+      let nl;
+      while ((nl = rxText.indexOf('\n')) !== -1) {
+        const raw = rxText.slice(0, nl).replace(/\r$/, '');
+        rxText = rxText.slice(nl + 1);
+        processIncomingLine(raw);
       }
     }
 
     function processIncomingLine(line) {
-      const trimmed = line.trim();
-      if (!trimmed) return;
-
-      if (isStreaming && parseAndExecuteDrawCall(trimmed)) {
-        drawCallsCount++;
-        updateHud();
-        return;
-      }
-
-      logTerminal(trimmed, 'log-rx');
-      updateDeviceInfoCard(trimmed);
+      const t = line.trim();
+      if (!t) return;
+      updateDeviceInfo(t);
+      log(t, 'log-rx');
     }
 
-    function rgb565ToCss(colorVal) {
-      if (typeof colorVal === 'string') {
-        const s = colorVal.trim();
-        if (s.startsWith('#')) return s;
-        colorVal = s.startsWith('0x') || s.startsWith('0X')
-          ? parseInt(s, 16)
-          : parseInt(s, 10);
+    function updateDeviceInfo(line) {
+      const el = document.getElementById('deviceInfoSummary');
+      if (/bruce|firmware|heap|psram|model|lilygo|embed|sd|littlefs|display/i.test(line)) {
+        if (el.textContent.startsWith('Device disconnected')) el.textContent = '';
+        el.textContent += line + ' • ';
       }
-      if (isNaN(colorVal)) return '#ffffff';
+    }
 
-      if (colorVal > 0xFFFF) {
-        const r = (colorVal >> 16) & 0xFF;
-        const g = (colorVal >> 8) & 0xFF;
-        const b = colorVal & 0xFF;
-        return `rgb(${r},${g},${b})`;
+    function handleBinaryStream(chunk) {
+      let buf = rxBin.length ? concatU8(rxBin, chunk) : chunk;
+      let off = 0;
+
+      while (off < buf.length) {
+        if (buf[off] !== 0xAA) {
+          off++;
+          continue;
+        }
+        if (off + 2 >= buf.length) break;
+        const size = buf[off + 1];
+        if (size < 3) { off++; continue; }
+        if (off + size > buf.length) break;
+
+        const packet = buf.slice(off, off + size);
+        const op = decodeTftPacket(packet);
+        if (op) ingestOp(op);
+
+        drawCalls++;
+        updateHud();
+        off += size;
       }
+      rxBin = off < buf.length ? buf.slice(off) : new Uint8Array(0);
+    }
 
-      const r5 = (colorVal >> 11) & 0x1F;
-      const g6 = (colorVal >> 5) & 0x3F;
-      const b5 = colorVal & 0x1F;
+    function concatU8(a, b) {
+      const c = new Uint8Array(a.length + b.length);
+      c.set(a, 0); c.set(b, a.length);
+      return c;
+    }
 
+    function decodeTftPacket(packet) {
+      if (packet.length < 3 || packet[0] !== 0xAA) return null;
+      const size = packet[1];
+      const fn   = packet[2];
+
+      if (fn === 99) {
+        const w = (packet[3] << 8) | packet[4];
+        const h = (packet[5] << 8) | packet[6];
+        const rot = packet.length > 7 ? packet[7] : 0;
+        return { kind: 'screenInfo', w, h, rot };
+      }
+      if (fn < 0 || fn > 21) return null;
+
+      const args = [];
+      let i = 3;
+      const wordCount = wordFields(fn);
+      for (let k = 0; k < wordCount && i + 1 < size; k++) {
+        args.push((packet[i] << 8) | packet[i + 1]);
+        i += 2;
+      }
+      let text = null;
+      if (i < size && (fn >= 14 && fn <= 17)) {
+        text = new TextDecoder('utf-8', { fatal: false }).decode(packet.slice(i, size));
+      }
+      return { kind: 'op', fn, args, text };
+    }
+
+    function wordFields(fn) {
+      switch (fn) {
+        case 0:  return 1;
+        case 19: return 3;
+        case 5: case 6: return 4;
+        case 20: case 21: return 4;
+        case 1: case 2: return 5;
+        case 9: case 10: return 5;
+        case 11: return 5;
+        case 3: case 4: return 6;
+        case 7: case 8: return 7;
+        case 13: return 7;
+        case 12: return 8;
+        case 14: case 15: case 16: case 17: return 5;
+        default: return 0;
+      }
+    }
+
+    function ingestOp(op) {
+      if (op.kind === 'screenInfo') {
+        pendingSize = { w: op.w, h: op.h };
+        return;
+      }
+      if (op.fn === 0) {
+        pendingOps = [op];
+        pendingClearsFrame = true;
+        scheduleFlush();
+        return;
+      }
+      pendingOps.push(op);
+      scheduleFlush();
+    }
+
+    function scheduleFlush() {
+      if (flushTimer) return;
+      flushTimer = setTimeout(flushOps, COALESCE_MS);
+    }
+
+    function flushOps() {
+      flushTimer = null;
+      if (pendingSize) pendingSize = null;
+      if (!pendingOps.length) return;
+
+      if (pendingClearsFrame) {
+        replayOps(pendingOps, true);
+      } else {
+        replayOps(pendingOps, false);
+      }
+      pendingOps = [];
+      pendingClearsFrame = false;
+    }
+
+    function replayOps(ops, clearFirst) {
+      if (clearFirst) {
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+      }
+      for (const op of ops) drawOp(op);
+    }
+
+    function rgb565Css(c) {
+      const r5 = (c >> 11) & 0x1f;
+      const g6 = (c >> 5)  & 0x3f;
+      const b5 =  c        & 0x1f;
       const r8 = (r5 << 3) | (r5 >> 2);
       const g8 = (g6 << 2) | (g6 >> 4);
       const b8 = (b5 << 3) | (b5 >> 2);
       return `rgb(${r8},${g8},${b8})`;
     }
 
-    function parseAndExecuteDrawCall(line) {
-      let payload = line.replace(/^(\[?(SCREEN|SCR|TFT|DRAW|GUI)\]?:?\s*)/i, '');
+    function signed16(v) { return v >= 0x8000 ? v - 0x10000 : v; }
 
-      if (payload.startsWith('{') && payload.endsWith('}')) {
-        try {
-          const obj = JSON.parse(payload);
-          const cmd = obj.cmd || obj.type || obj.fn || obj.c;
-          if (cmd) {
-            return dispatchDrawCommand(cmd, obj);
+    function drawOp(op) {
+      const fn = op.fn;
+      const a  = op.args;
+      const g  = (i, def = 0) => (i < a.length ? a[i] : def);
+
+      try {
+        switch (fn) {
+          case 0: {
+            ctx.fillStyle = rgb565Css(g(0));
+            ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+            break;
           }
-        } catch (_) {}
-      }
-
-      const fnMatch = payload.match(/^([a-zA-Z0-9_]+)\s*\((.*)\)$/);
-      if (fnMatch) {
-        const fnName = fnMatch[1];
-        const args = splitArgsRespectingQuotes(fnMatch[2]);
-        if (executeTftMethod(fnName, args)) return true;
-      }
-
-      const kvMatch = payload.match(/^([a-zA-Z_]{2,18})[:\s,;|\t]+(.+)$/);
-      if (kvMatch) {
-        const fnName = kvMatch[1];
-        const rawRest = kvMatch[2];
-        const args = rawRest.includes(',')
-          ? splitArgsRespectingQuotes(rawRest, ',')
-          : rawRest.includes('|')
-            ? splitArgsRespectingQuotes(rawRest, '|')
-            : splitArgsRespectingQuotes(rawRest, ' ');
-        if (executeTftMethod(fnName, args)) return true;
-      }
-
-      return false;
-    }
-
-    function splitArgsRespectingQuotes(str, delimiter = ',') {
-      const result = [];
-      let current = '';
-      let inQuotes = false;
-      let quoteChar = '';
-
-      for (let i = 0; i < str.length; i++) {
-        const ch = str[i];
-        if ((ch === '"' || ch === "'") && str[i - 1] !== '\\') {
-          if (!inQuotes) {
-            inQuotes = true;
-            quoteChar = ch;
-          } else if (ch === quoteChar) {
-            inQuotes = false;
-          } else {
-            current += ch;
+          case 1: {
+            ctx.strokeStyle = rgb565Css(g(4)); ctx.lineWidth = 1;
+            ctx.strokeRect(signed16(g(0)) + 0.5, signed16(g(1)) + 0.5, g(2), g(3));
+            break;
           }
-        } else if (!inQuotes && ch === delimiter) {
-          if (delimiter !== ' ' || current.length > 0) {
-            result.push(current.trim());
-            current = '';
+          case 2: {
+            ctx.fillStyle = rgb565Css(g(4));
+            ctx.fillRect(signed16(g(0)), signed16(g(1)), g(2), g(3));
+            break;
           }
-        } else {
-          current += ch;
-        }
-      }
-      if (current.trim().length > 0 || result.length > 0) {
-        result.push(current.trim());
-      }
-      return result;
-    }
-
-    function dispatchDrawCommand(cmdName, obj) {
-      const name = String(cmdName).toLowerCase();
-      switch (name) {
-        case 'fillscreen':
-        case 'cls':
-        case 'clear':
-          return executeTftMethod('fillScreen', [obj.color ?? obj.c ?? 0]);
-        case 'fillrect':
-        case 'fr':
-          return executeTftMethod('fillRect', [obj.x, obj.y, obj.w, obj.h, obj.color ?? obj.c]);
-        case 'drawrect':
-        case 'dr':
-          return executeTftMethod('drawRect', [obj.x, obj.y, obj.w, obj.h, obj.color ?? obj.c]);
-        case 'drawroundrect':
-          return executeTftMethod('drawRoundRect', [obj.x, obj.y, obj.w, obj.h, obj.r, obj.color ?? obj.c]);
-        case 'fillroundrect':
-          return executeTftMethod('fillRoundRect', [obj.x, obj.y, obj.w, obj.h, obj.r, obj.color ?? obj.c]);
-        case 'drawline':
-        case 'dl':
-          return executeTftMethod('drawLine', [obj.x0 ?? obj.x, obj.y0 ?? obj.y, obj.x1 ?? obj.x2, obj.y1 ?? obj.y2, obj.color ?? obj.c]);
-        case 'drawstring':
-        case 'text':
-        case 'print':
-        case 'ds':
-          return executeTftMethod('drawString', [obj.text ?? obj.str ?? obj.s, obj.x, obj.y, obj.color ?? obj.fg ?? 0xFFFF, obj.size ?? obj.font ?? 1, obj.bg]);
-        case 'drawcentystring':
-        case 'drawcentrestri':
-        case 'drawcentrestring':
-        case 'drawcenterstring':
-          return executeTftMethod('drawCentreString', [obj.text ?? obj.str ?? obj.s, obj.x, obj.y, obj.color ?? obj.fg ?? 0xFFFF, obj.size ?? obj.font ?? 1]);
-        case 'drawrightstring':
-          return executeTftMethod('drawRightString', [obj.text ?? obj.str ?? obj.s, obj.x, obj.y, obj.color ?? obj.fg ?? 0xFFFF, obj.size ?? obj.font ?? 1]);
-        case 'drawcircle':
-          return executeTftMethod('drawCircle', [obj.x, obj.y, obj.r, obj.color ?? obj.c]);
-        case 'fillcircle':
-          return executeTftMethod('fillCircle', [obj.x, obj.y, obj.r, obj.color ?? obj.c]);
-        case 'drawpixel':
-        case 'pixel':
-          return executeTftMethod('drawPixel', [obj.x, obj.y, obj.color ?? obj.c]);
-        default:
-          return false;
-      }
-    }
-
-    const tftState = {
-      cursorX: 0,
-      cursorY: 0,
-      textColor: '#ffffff',
-      textBg: null,
-      textSize: 1,
-      textDatum: 0
-    };
-
-    function executeTftMethod(rawName, args) {
-      const fn = rawName.toLowerCase().replace(/^tft\./, '');
-      const num = (idx, def = 0) => {
-        const v = args[idx];
-        if (v === undefined || v === null || v === '') return def;
-        return typeof v === 'string' && (v.startsWith('0x') || v.startsWith('0X'))
-          ? parseInt(v, 16)
-          : Number(v);
-      };
-
-      switch (fn) {
-        case 'fillscreen':
-        case 'clearscreen':
-        case 'cls': {
-          const color = rgb565ToCss(args[0] ?? 0);
-          currentFrameCalls = [{ fn: 'fillScreen', args: [color] }];
-          ctx.fillStyle = color;
-          ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-          return true;
-        }
-
-        case 'fillrect':
-        case 'drawfillrect':
-        case 'fr': {
-          if (args.length < 5) return false;
-          const x = num(0), y = num(1), w = num(2), h = num(3);
-          const color = rgb565ToCss(args[4]);
-          if (x <= 0 && y <= 0 && w >= SCREEN_WIDTH && h >= SCREEN_HEIGHT) {
-            currentFrameCalls = [];
+          case 3: {
+            ctx.strokeStyle = rgb565Css(g(5)); ctx.lineWidth = 1;
+            drawRoundRect(signed16(g(0)), signed16(g(1)), g(2), g(3), g(4));
+            break;
           }
-          currentFrameCalls.push({ fn: 'fillRect', args: [x, y, w, h, color] });
-          ctx.fillStyle = color;
-          ctx.fillRect(x, y, w, h);
-          return true;
-        }
-
-        case 'drawrect':
-        case 'dr': {
-          if (args.length < 5) return false;
-          const x = num(0), y = num(1), w = num(2), h = num(3);
-          const color = rgb565ToCss(args[4]);
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 1;
-          ctx.strokeRect(x + 0.5, y + 0.5, w, h);
-          return true;
-        }
-
-        case 'drawroundrect':
-        case 'rrect': {
-          if (args.length < 6) return false;
-          const x = num(0), y = num(1), w = num(2), h = num(3), r = num(4);
-          ctx.strokeStyle = rgb565ToCss(args[5]);
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.roundRect(x + 0.5, y + 0.5, w, h, r);
-          ctx.stroke();
-          return true;
-        }
-
-        case 'fillroundrect':
-        case 'frrect': {
-          if (args.length < 6) return false;
-          const x = num(0), y = num(1), w = num(2), h = num(3), r = num(4);
-          ctx.fillStyle = rgb565ToCss(args[5]);
-          ctx.beginPath();
-          ctx.roundRect(x, y, w, h, r);
-          ctx.fill();
-          return true;
-        }
-
-        case 'drawline':
-        case 'dl': {
-          if (args.length < 5) return false;
-          const x0 = num(0), y0 = num(1), x1 = num(2), y1 = num(3);
-          ctx.strokeStyle = rgb565ToCss(args[4]);
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(x0 + 0.5, y0 + 0.5);
-          ctx.lineTo(x1 + 0.5, y1 + 0.5);
-          ctx.stroke();
-          return true;
-        }
-
-        case 'drawfastvline':
-        case 'vline': {
-          if (args.length < 4) return false;
-          const x = num(0), y = num(1), h = num(2);
-          ctx.fillStyle = rgb565ToCss(args[3]);
-          ctx.fillRect(x, y, 1, h);
-          return true;
-        }
-
-        case 'drawfasthline':
-        case 'hline': {
-          if (args.length < 4) return false;
-          const x = num(0), y = num(1), w = num(2);
-          ctx.fillStyle = rgb565ToCss(args[3]);
-          ctx.fillRect(x, y, w, 1);
-          return true;
-        }
-
-        case 'drawcircle':
-        case 'circle': {
-          if (args.length < 4) return false;
-          const x = num(0), y = num(1), r = num(2);
-          ctx.strokeStyle = rgb565ToCss(args[3]);
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.arc(x, y, r, 0, Math.PI * 2);
-          ctx.stroke();
-          return true;
-        }
-
-        case 'fillcircle':
-        case 'fcircle': {
-          if (args.length < 4) return false;
-          const x = num(0), y = num(1), r = num(2);
-          ctx.fillStyle = rgb565ToCss(args[3]);
-          ctx.beginPath();
-          ctx.arc(x, y, r, 0, Math.PI * 2);
-          ctx.fill();
-          return true;
-        }
-
-        case 'drawarc': {
-          if (args.length < 7) return false;
-          const x = num(0), y = num(1), r = num(2), ir = num(3);
-          const startAngle = (num(4) - 90) * (Math.PI / 180);
-          const endAngle = (num(5) - 90) * (Math.PI / 180);
-          ctx.strokeStyle = rgb565ToCss(args[6]);
-          ctx.lineWidth = Math.max(1, r - ir);
-          ctx.beginPath();
-          ctx.arc(x, y, (r + ir) / 2, startAngle, endAngle);
-          ctx.stroke();
-          return true;
-        }
-
-        case 'drawtriangle': {
-          if (args.length < 7) return false;
-          ctx.strokeStyle = rgb565ToCss(args[6]);
-          ctx.beginPath();
-          ctx.moveTo(num(0), num(1));
-          ctx.lineTo(num(2), num(3));
-          ctx.lineTo(num(4), num(5));
-          ctx.closePath();
-          ctx.stroke();
-          return true;
-        }
-
-        case 'filltriangle': {
-          if (args.length < 7) return false;
-          ctx.fillStyle = rgb565ToCss(args[6]);
-          ctx.beginPath();
-          ctx.moveTo(num(0), num(1));
-          ctx.lineTo(num(2), num(3));
-          ctx.lineTo(num(4), num(5));
-          ctx.closePath();
-          ctx.fill();
-          return true;
-        }
-
-        case 'drawpixel':
-        case 'pixel': {
-          if (args.length < 3) return false;
-          ctx.fillStyle = rgb565ToCss(args[2]);
-          ctx.fillRect(num(0), num(1), 1, 1);
-          return true;
-        }
-
-        case 'settextcolor': {
-          tftState.textColor = rgb565ToCss(args[0]);
-          tftState.textBg = args.length > 1 ? rgb565ToCss(args[1]) : null;
-          return true;
-        }
-        case 'settextsize': {
-          tftState.textSize = Math.max(1, num(0, 1));
-          return true;
-        }
-        case 'setcursor': {
-          tftState.cursorX = num(0);
-          tftState.cursorY = num(1);
-          return true;
-        }
-        case 'settextdatum': {
-          tftState.textDatum = num(0);
-          return true;
-        }
-
-        case 'drawstring':
-        case 'drawcentrestri':
-        case 'drawcentrestring':
-        case 'drawcenterstring':
-        case 'drawrightstring':
-        case 'ds':
-        case 'text': {
-          if (args.length < 3) return false;
-          let text, x, y, color = tftState.textColor, size = tftState.textSize;
-
-          if (!isNaN(Number(args[0])) && !isNaN(Number(args[1])) && isNaN(Number(args[2]))) {
-            x = num(0);
-            y = num(1);
-            text = String(args[2]);
-          } else {
-            text = String(args[0]);
-            x = num(1);
-            y = num(2);
+          case 4: {
+            ctx.fillStyle = rgb565Css(g(5));
+            fillRoundRect(signed16(g(0)), signed16(g(1)), g(2), g(3), g(4));
+            break;
           }
-
-          if (args.length >= 4 && args[3] !== undefined) {
-            const v3 = num(3);
-            if (v3 > 8) color = rgb565ToCss(args[3]);
-            else size = Math.max(1, v3);
+          case 5: {
+            ctx.strokeStyle = rgb565Css(g(3)); ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(signed16(g(0)), signed16(g(1)), g(2), 0, Math.PI * 2); ctx.stroke();
+            break;
           }
-          if (args.length >= 5 && args[4] !== undefined) {
-            const v4 = num(4);
-            if (v4 <= 8) size = Math.max(1, v4);
-            else color = rgb565ToCss(args[4]);
+          case 6: {
+            ctx.fillStyle = rgb565Css(g(3));
+            ctx.beginPath(); ctx.arc(signed16(g(0)), signed16(g(1)), g(2), 0, Math.PI * 2); ctx.fill();
+            break;
           }
+          case 7: {
+            ctx.strokeStyle = rgb565Css(g(6)); ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(signed16(g(0)), signed16(g(1)));
+            ctx.lineTo(signed16(g(2)), signed16(g(3)));
+            ctx.lineTo(signed16(g(4)), signed16(g(5)));
+            ctx.closePath(); ctx.stroke();
+            break;
+          }
+          case 8: {
+            ctx.fillStyle = rgb565Css(g(6));
+            ctx.beginPath();
+            ctx.moveTo(signed16(g(0)), signed16(g(1)));
+            ctx.lineTo(signed16(g(2)), signed16(g(3)));
+            ctx.lineTo(signed16(g(4)), signed16(g(5)));
+            ctx.closePath(); ctx.fill();
+            break;
+          }
+          case 9: {
+            ctx.strokeStyle = rgb565Css(g(4)); ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.ellipse(signed16(g(0)), signed16(g(1)), g(2), g(3), 0, 0, Math.PI * 2); ctx.stroke();
+            break;
+          }
+          case 10: {
+            ctx.fillStyle = rgb565Css(g(4));
+            ctx.beginPath(); ctx.ellipse(signed16(g(0)), signed16(g(1)), g(2), g(3), 0, 0, Math.PI * 2); ctx.fill();
+            break;
+          }
+          case 11: {
+            ctx.strokeStyle = rgb565Css(g(4)); ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(signed16(g(0)) + 0.5, signed16(g(1)) + 0.5);
+            ctx.lineTo(signed16(g(2)) + 0.5, signed16(g(3)) + 0.5);
+            ctx.stroke();
+            break;
+          }
+          case 12: {
+            ctx.strokeStyle = rgb565Css(g(6));
+            ctx.lineWidth = Math.max(1, g(2) - g(3));
+            const sa = (g(4) + 90) * Math.PI / 180;
+            const ea = (g(5) + 90) * Math.PI / 180;
+            const radius = (g(2) + g(3)) / 2;
+            ctx.beginPath(); ctx.arc(signed16(g(0)), signed16(g(1)), radius, sa, ea); ctx.stroke();
+            break;
+          }
+          case 13: {
+            ctx.strokeStyle = rgb565Css(g(5));
+            ctx.lineWidth = Math.max(1, g(4));
+            ctx.beginPath();
+            ctx.moveTo(signed16(g(0)) + 0.5, signed16(g(1)) + 0.5);
+            ctx.lineTo(signed16(g(2)) + 0.5, signed16(g(3)) + 0.5);
+            ctx.stroke();
+            break;
+          }
+          case 14:
+          case 15:
+          case 16:
+          case 17: {
+            if (!op.text) break;
+            const text = op.text.replace(/\n/g, '');
+            const size = Math.max(1, g(2));
+            const fg   = rgb565Css(g(3));
+            const bgVal = g(4);
 
-          const fontPx = Math.max(9, size * 8);
-          ctx.font = `bold ${fontPx}px monospace`;
-          ctx.textBaseline = 'top';
+            // Fixed 6x8 cell per glyph at text size 1, scaled by textSize
+            const advance = 6 * size;
+            const lineH   = 8 * size;
+            const runW    = advance * text.length;
 
-          if (fn.includes('centre') || fn.includes('center') || tftState.textDatum === 1 || tftState.textDatum === 4) {
+            const x = signed16(g(0));
+            const y = signed16(g(1));
+
+            let startX;
+            if (fn === 14) startX = x - runW / 2;
+            else if (fn === 15) startX = x - runW;
+            else startX = x;
+
+            // Always paint the background cell so old text is fully covered
+            let fillStyle = '#000000';
+            if (bgVal !== undefined) {
+              if (bgVal === g(3)) fillStyle = '#000000';
+              else fillStyle = rgb565Css(bgVal);
+            }
+            ctx.fillStyle = fillStyle;
+            ctx.fillRect(startX, y, runW, lineH);
+
+            ctx.fillStyle = fg;
+            ctx.textBaseline = 'middle';
             ctx.textAlign = 'center';
-          } else if (fn.includes('right') || tftState.textDatum === 2) {
-            ctx.textAlign = 'right';
-          } else {
-            ctx.textAlign = 'left';
-          }
 
-          if (tftState.textBg) {
-            const metrics = ctx.measureText(text);
-            const bgX = ctx.textAlign === 'center' ? x - metrics.width / 2 : (ctx.textAlign === 'right' ? x - metrics.width : x);
-            ctx.fillStyle = tftState.textBg;
-            ctx.fillRect(bgX, y, metrics.width, fontPx + 2);
-          }
-
-          ctx.fillStyle = color;
-          ctx.fillText(text, x, y);
-          ctx.textAlign = 'left';
-          return true;
-        }
-
-        case 'drawbitmap':
-        case 'drawxbitmap':
-        case 'pushimage': {
-          if (args.length < 5) return false;
-          const x = num(0), y = num(1), w = num(2), h = num(3);
-          const hexData = String(args[4]).replace(/[^0-9a-fA-F]/g, '');
-          const fgColor = args.length >= 6 ? rgb565ToCss(args[5]) : tftState.textColor;
-
-          if (hexData.length > 0) {
-            ctx.fillStyle = fgColor;
-            let bitIndex = 0;
-            for (let row = 0; row < h; row++) {
-              for (let col = 0; col < w; col++) {
-                const bytePos = Math.floor(bitIndex / 8) * 2;
-                if (bytePos + 2 <= hexData.length) {
-                  const byteVal = parseInt(hexData.substr(bytePos, 2), 16);
-                  const bitMask = 1 << (7 - (bitIndex % 8));
-                  if (byteVal & bitMask) {
-                    ctx.fillRect(x + col, y + row, 1, 1);
-                  }
-                }
-                bitIndex++;
-              }
+            for (let i = 0; i < text.length; i++) {
+              const ch = text[i];
+              if (ch === ' ' || ch === '\t') continue;
+              const gx = startX + advance * (i + 0.5);
+              const gy = y + lineH / 2;
+              ctx.fillText(ch, gx, gy);
             }
+            break;
           }
-          return true;
+          case 18: break;
+          case 19: {
+            ctx.fillStyle = rgb565Css(g(2));
+            ctx.fillRect(signed16(g(0)), signed16(g(1)), 1, 1);
+            break;
+          }
+          case 20: {
+            ctx.fillStyle = rgb565Css(g(3));
+            ctx.fillRect(signed16(g(0)), signed16(g(1)), 1, g(2));
+            break;
+          }
+          case 21: {
+            ctx.fillStyle = rgb565Css(g(3));
+            ctx.fillRect(signed16(g(0)), signed16(g(1)), g(2), 1);
+            break;
+          }
         }
-
-        default:
-          return false;
+      } catch (e) {
+        // ignore bad packet
       }
     }
 
-    function isBinaryFrameChunk(chunk) {
-      if (rxBinaryBuffer.length > 0) return true;
-      if (chunk.length >= 4 && chunk[0] === 0xAA && chunk[1] === 0x55) return true;
-      return false;
+    function drawRoundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+      ctx.stroke();
     }
-
-    function handleBinaryScreenChunk(chunk) {
-      const merged = new Uint8Array(rxBinaryBuffer.length + chunk.length);
-      merged.set(rxBinaryBuffer, 0);
-      merged.set(chunk, rxBinaryBuffer.length);
-      rxBinaryBuffer = merged;
-
-      if (rxBinaryBuffer.length >= 10) {
-        const view = new DataView(rxBinaryBuffer.buffer);
-        const x = view.getUint16(2, true);
-        const y = view.getUint16(4, true);
-        const w = view.getUint16(6, true);
-        const h = view.getUint16(8, true);
-        const expectedBytes = 10 + w * h * 2;
-
-        if (w > 0 && w <= SCREEN_WIDTH && h > 0 && h <= SCREEN_HEIGHT) {
-          if (rxBinaryBuffer.length >= expectedBytes) {
-            const imgData = ctx.createImageData(w, h);
-            let srcOffset = 10;
-            let dstOffset = 0;
-            for (let i = 0; i < w * h; i++) {
-              const c = view.getUint16(srcOffset, true);
-              srcOffset += 2;
-              imgData.data[dstOffset++] = ((c >> 11) & 0x1F) * 255 / 31;
-              imgData.data[dstOffset++] = ((c >> 5) & 0x3F) * 255 / 63;
-              imgData.data[dstOffset++] = (c & 0x1F) * 255 / 31;
-              imgData.data[dstOffset++] = 255;
-            }
-            ctx.putImageData(imgData, x, y);
-            drawCallsCount++;
-            updateHud();
-            rxBinaryBuffer = rxBinaryBuffer.slice(expectedBytes);
-          }
-        } else {
-          rxBinaryBuffer = new Uint8Array(0);
-        }
-      }
-    }
-
-    const NAV_MAP = {
-      dual: {
-        up:         ['screen up', 'nav up'],
-        down:       ['screen down', 'nav down'],
-        left:       ['screen left', 'nav left'],
-        right:      ['screen right', 'nav right'],
-        select:     ['screen select', 'nav select'],
-        longSelect: ['screen long', 'nav long'],
-        back:       ['screen esc', 'nav back']
-      },
-      screen: {
-        up:         ['screen up'],
-        down:       ['screen down'],
-        left:       ['screen left'],
-        right:      ['screen right'],
-        select:     ['screen select'],
-        longSelect: ['screen long'],
-        back:       ['screen esc']
-      },
-      nav: {
-        up:         ['nav up'],
-        down:       ['nav down'],
-        left:       ['nav left'],
-        right:      ['nav right'],
-        select:     ['nav select'],
-        longSelect: ['nav long'],
-        back:       ['nav back']
-      },
-      raw: {
-        up:         ['up'],
-        down:       ['down'],
-        left:       ['left'],
-        right:      ['right'],
-        select:     ['select'],
-        longSelect: ['long'],
-        back:       ['esc']
-      }
-    };
-
-    async function sendNavigationAction(action, isLong = false) {
-      const profileKey = document.getElementById('navProfileSelect').value || 'dual';
-      const profile = NAV_MAP[profileKey] || NAV_MAP.dual;
-
-      let key = action;
-      if (isLong && action === 'select') {
-        key = 'longSelect';
-      }
-
-      const cmds = profile[key] || [action];
-      await enqueueCommand(cmds[0]);
-    }
-
-    async function requestRepaint(silent = false) {
-      if (!silent) vibrate(20);
-      if (!isConnected) {
-        if (!silent) showToast('Device is not connected', true);
-        return;
-      }
-      await enqueueCommand('screen repaint');
-    }
-
-    function triggerLongPressManual() {
-      vibrate([35, 40, 75]);
-      sendNavigationAction('select', true);
-      showToast('Long Press (Hold OK) sent');
-    }
-
-    function initInteractivePads() {
-      const dpadEl = document.getElementById('dpad');
-      const interactiveBtns = document.querySelectorAll('[data-action]');
-
-      interactiveBtns.forEach(btn => {
-        const action = btn.getAttribute('data-action');
-        let pressTimer = null;
-        let repeatInterval = null;
-        let longPressFired = false;
-
-        const startPress = (e) => {
-          e.preventDefault();
-          btn.classList.add('pressed');
-          vibrate(15);
-          longPressFired = false;
-
-          const threshold = parseInt(document.getElementById('longPressMs').value, 10) || 450;
-
-          if (action === 'select' || action === 'back') {
-            dpadEl.classList.add('long-press-charge');
-            pressTimer = setTimeout(() => {
-              longPressFired = true;
-              dpadEl.classList.remove('long-press-charge');
-              dpadEl.classList.add('long-press-fired');
-              vibrate([40, 30, 80]);
-              sendNavigationAction(action === 'select' ? 'select' : 'back', true);
-            }, threshold);
-          } else {
-            sendNavigationAction(action, false);
-            pressTimer = setTimeout(() => {
-              repeatInterval = setInterval(() => {
-                vibrate(8);
-                sendNavigationAction(action, false);
-              }, 160);
-            }, threshold);
-          }
-        };
-
-        const endPress = (e) => {
-          if (!btn.classList.contains('pressed')) return;
-          e.preventDefault();
-          btn.classList.remove('pressed');
-          dpadEl.classList.remove('long-press-charge', 'long-press-fired');
-
-          if (pressTimer) {
-            clearTimeout(pressTimer);
-            pressTimer = null;
-          }
-          if (repeatInterval) {
-            clearInterval(repeatInterval);
-            repeatInterval = null;
-          }
-
-          if ((action === 'select' || action === 'back') && !longPressFired) {
-            sendNavigationAction(action, false);
-          }
-        };
-
-        btn.addEventListener('pointerdown', startPress);
-        btn.addEventListener('pointerup', endPress);
-        btn.addEventListener('pointercancel', endPress);
-        btn.addEventListener('pointerleave', endPress);
-      });
-    }
-
-    initInteractivePads();
-
-    function setConnectionStatus(state, text) {
-      const dot = document.getElementById('statusDot');
-      const statusText = document.getElementById('statusText');
-      const btn = document.getElementById('btnConnect');
-      const btnLabel = document.getElementById('btnConnectLabel');
-
-      dot.className = 'status-dot ' + (state === 'connected' ? 'connected' : state === 'connecting' ? 'connecting' : '');
-      statusText.textContent = text;
-
-      if (state === 'connected') {
-        btn.className = 'btn-top danger';
-        btnLabel.textContent = 'Disconnect';
-      } else if (state === 'connecting') {
-        btn.className = 'btn-top';
-        btnLabel.textContent = 'Connecting...';
-      } else {
-        btn.className = 'btn-top primary';
-        btnLabel.textContent = 'Connect';
-      }
-    }
-
-    function updateHud() {
-      document.getElementById('hudPkts').textContent = `PKTS: ${rxPacketsCount} | CALLS: ${drawCallsCount}`;
-      document.getElementById('rxCount').textContent = rxPacketsCount;
-    }
-
-    function toggleStream() {
-      isStreaming = !isStreaming;
-      const lbl = document.getElementById('streamStateLabel');
-      lbl.textContent = isStreaming ? '▶ Stream ON' : '⏸ Stream OFF';
-      vibrate(15);
-    }
-
-    function clearMirrorCanvas() {
-      vibrate(15);
-      currentFrameCalls = [];
-      drawCallsCount = 0;
-      updateHud();
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    function fillRoundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+      ctx.fill();
     }
 
     function saveScreenshot() {
@@ -1655,7 +964,158 @@
       a.href = dataUrl;
       a.download = `bruce-screen-${Date.now()}.png`;
       a.click();
-      showToast('320×170 capture saved');
+      showToast('320×170 screenshot saved');
+    }
+
+    function clearMirrorCanvas() {
+      vibrate(15);
+      pendingOps = []; pendingClearsFrame = false;
+      drawCalls = 0; rxPackets = 0;
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+      updateHud();
+      showToast('Screen cleared');
+    }
+
+    const NAV_MAP = {
+      bruce: {
+        up:        ['nav up'],
+        down:      ['nav down'],
+        prev:      ['nav prev'],
+        next:      ['nav next'],
+        sel:       ['nav sel'],
+        longSel:   ['nav sel 600'],
+        esc:       ['nav esc'],
+      },
+      raw: {
+        up:        ['up'],
+        down:      ['down'],
+        prev:      ['prev'],
+        next:      ['next'],
+        sel:       ['sel'],
+        longSel:   ['sel 600'],
+        esc:       ['esc'],
+      },
+    };
+
+    function sendNavigation(action, isLong = false) {
+      const profile = document.getElementById('navProfileSelect').value || 'bruce';
+      const map = NAV_MAP[profile] || NAV_MAP.bruce;
+
+      let key = action;
+      if (isLong && action === 'sel') key = 'longSel';
+
+      const cmds = map[key] || [`nav ${action}`];
+      (async () => {
+        for (const c of cmds) await enqueueCommand(c);
+      })();
+    }
+
+    async function requestRepaint(silent = false) {
+      if (!silent) vibrate(20);
+      if (!isConnected) {
+        if (!silent) showToast('Device not connected', true);
+        return;
+      }
+      await enqueueCommand('nav next');
+      await new Promise(r => setTimeout(r, 180));
+      await enqueueCommand('nav prev');
+    }
+
+    async function toggleStream() {
+      if (!isConnected) { showToast('Connect to the device first', true); return; }
+      isStreaming = !isStreaming;
+      const lbl = document.getElementById('streamStateLabel');
+      lbl.textContent = isStreaming ? 'Stop' : 'Stream';
+      await enqueueCommand(isStreaming ? 'display start' : 'display stop');
+      if (isStreaming) {
+        await new Promise(r => setTimeout(r, 250));
+        await requestRepaint(true);
+      }
+      vibrate(15);
+    }
+
+    function triggerLongPressManual() {
+      vibrate([35, 40, 75]);
+      sendNavigation('sel', true);
+      showToast('Long press (hold Select) sent');
+    }
+
+    function initInteractivePads() {
+      const buttons = document.querySelectorAll('[data-action]');
+      buttons.forEach(btn => {
+        const action = btn.getAttribute('data-action');
+        let pressTimer = null;
+        let repeatInterval = null;
+        let longFired = false;
+
+        const startPress = (e) => {
+          e.preventDefault();
+          btn.classList.add('pressed');
+          vibrate(15);
+          longFired = false;
+
+          const threshold = parseInt(document.getElementById('longPressMs').value, 10) || 600;
+
+          if (action === 'sel' || action === 'esc') {
+            document.getElementById('dpad').classList.add('long-press-charge');
+            pressTimer = setTimeout(() => {
+              longFired = true;
+              document.getElementById('dpad').classList.remove('long-press-charge');
+              document.getElementById('dpad').classList.add('long-press-fired');
+              vibrate([40, 30, 80]);
+              sendNavigation(action, true);
+            }, threshold);
+          } else {
+            sendNavigation(action, false);
+            pressTimer = setTimeout(() => {
+              repeatInterval = setInterval(() => {
+                vibrate(6);
+                sendNavigation(action, false);
+              }, 150);
+            }, threshold);
+          }
+        };
+
+        const endPress = (e) => {
+          if (!btn.classList.contains('pressed')) return;
+          e.preventDefault();
+          btn.classList.remove('pressed');
+          document.getElementById('dpad').classList.remove('long-press-charge', 'long-press-fired');
+
+          if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+          if (repeatInterval) { clearInterval(repeatInterval); repeatInterval = null; }
+
+          if ((action === 'sel' || action === 'esc') && !longFired) {
+            sendNavigation(action, false);
+          }
+        };
+
+        btn.addEventListener('pointerdown', startPress, { passive: false });
+        btn.addEventListener('pointerup', endPress, { passive: false });
+        btn.addEventListener('pointercancel', endPress);
+        btn.addEventListener('pointerleave', endPress);
+      });
+    }
+
+    function switchTab(tabId, btnEl) {
+      vibrate(10);
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      if (btnEl) btnEl.classList.add('active');
+      document.getElementById('tab-' + tabId).classList.add('active');
+    }
+
+    function toggleFullscreen() {
+      vibrate(15);
+      const hint = document.getElementById('fsHint');
+      hint.style.opacity = '1';
+      setTimeout(() => { hint.style.opacity = '.5'; }, 1200);
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
     }
 
     function sendRawCommand(cmd) {
@@ -1671,77 +1131,17 @@
       input.value = '';
     }
 
-    function logTerminal(text, cls = '') {
-      const box = document.getElementById('terminalLog');
-      const line = document.createElement('div');
-      if (cls) line.className = cls;
-      const time = new Date().toLocaleTimeString('en-US', { hour12: false });
-      line.textContent = `[${time}] ${text}`;
-      box.appendChild(line);
-      if (box.childNodes.length > 250) {
-        box.removeChild(box.firstChild);
-      }
-      box.scrollTop = box.scrollHeight;
-    }
-
-    function updateDeviceInfoCard(line) {
-      const el = document.getElementById('deviceInfoSummary');
-      if (/bruce|firmware|heap|psram|model|lilygo|embed|sd|littlefs/i.test(line)) {
-        if (el.textContent.startsWith('Device disconnected')) {
-          el.textContent = '';
-        }
-        el.textContent += line + ' • ';
-      }
-    }
-
-    function switchTab(tabId, btnEl) {
-      vibrate(10);
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-      btnEl.classList.add('active');
-      document.getElementById('tab-' + tabId).classList.add('active');
-    }
-
-    function toggleFullscreen() {
-      vibrate(15);
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
-      } else {
-        document.exitFullscreen().catch(() => {});
-      }
-    }
-
-    function vibrate(pattern = 15) {
-      if (navigator.vibrate) {
-        try { navigator.vibrate(pattern); } catch (_) {}
-      }
-    }
-
-    let toastTimeout = null;
-    function showToast(msg, isError = false) {
-      const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.className = isError ? 'show error' : 'show';
-      clearTimeout(toastTimeout);
-      toastTimeout = setTimeout(() => {
-        t.className = '';
-      }, 3600);
-    }
-
     function handleBleError(err) {
       const msg = err?.message || String(err);
-      logTerminal(`BLE Error: ${msg}`, 'log-err');
-
-      if (msg.includes('User cancelled')) {
-        showToast('Device selection cancelled');
-      } else if (msg.includes('globally disabled') || msg.includes('Bluetooth adapter not available')) {
-        showToast('Enable Bluetooth and Location Services on your phone', true);
-      } else if (msg.includes('SecurityError')) {
-        showToast('Web Bluetooth requires HTTPS or localhost', true);
-      } else {
-        showToast(`BLE Error: ${msg}`, true);
-      }
+      log(`BLE Error: ${msg}`, 'log-err');
+      if (msg.includes('User cancelled')) showToast('Device selection cancelled');
+      else if (msg.includes('globally disabled') || msg.includes('Bluetooth adapter not available')) showToast('Enable Bluetooth and Location Services on your phone', true);
+      else if (msg.includes('SecurityError')) showToast('Web Bluetooth requires HTTPS or localhost', true);
+      else showToast(`BLE Error: ${msg}`, true);
     }
+
+    // Canvas starts blank; the device screen is painted only from live draw calls.
+    initInteractivePads();
 
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
       window.addEventListener('load', () => {

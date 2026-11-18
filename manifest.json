@@ -1,15 +1,43 @@
 {
-  "name": "brucebleremote",
-  "short_name": "BruceBLE",
+  "name": "Bruce Remote",
+  "short_name": "Bruce Remote",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "orientation": "portrait",
+  "background_color": "#07080c",
+  "theme_color": "#08090d",
+  "description": "Web Bluetooth remote and screen mirror for LilyGO T-Embed CC1101 running Bruce firmware.",
+  "categories": ["utilities", "bluetooth"],
   "icons": [
     {
-      "src": "icon.png",
+      "src": "./assets/favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./assets/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
