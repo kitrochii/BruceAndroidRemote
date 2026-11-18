@@ -1,7 +1,9 @@
 {
+  "id": "./",
   "name": "Bruce Remote",
   "short_name": "Bruce Remote",
-  "start_url": ".",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#07080c",
